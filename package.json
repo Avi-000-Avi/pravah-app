@@ -7,9 +7,20 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase db push",
+    "db:diff": "supabase db diff",
+    "prepare": "husky"
   },
   "dependencies": {
+    "@sentry/react-native": "^8.9.1",
     "@supabase/supabase-js": "^2.104.1",
     "@tanstack/react-query": "^5.100.5",
     "expo": "~55.0.17",
@@ -17,6 +28,7 @@
     "expo-linking": "^55.0.14",
     "expo-router": "^55.0.13",
     "expo-status-bar": "~55.0.5",
+    "posthog-react-native": "^4.43.5",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-mmkv": "^4.3.1",
@@ -26,9 +38,27 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.2",
+    "@commitlint/config-conventional": "^20.5.0",
     "@types/react": "~19.1.0",
     "babel-plugin-module-resolver": "^5.0.3",
+    "eslint": "^8.57.1",
+    "eslint-config-expo": "^55.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.3",
     "typescript": "~5.9.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{js,cjs,json,md,yml,yaml}": [
+      "prettier --write"
+    ]
   },
   "private": true
 }

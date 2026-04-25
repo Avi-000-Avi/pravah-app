@@ -1,0 +1,12 @@
+# Replace @your-github-username with the actual GitHub username(s) or team.
+# Teams use the format @org/team-name.
+
+# Default owner for everything
+* @your-github-username
+
+# Design system tokens and primitives — require explicit sign-off
+src/lib/theme.ts @your-github-username
+src/components/ @your-github-username
+
+# Supabase migrations are irreversible in production
+supabase/migrations/ @your-github-username
