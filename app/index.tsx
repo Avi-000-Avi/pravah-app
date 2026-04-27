@@ -1,26 +1,9 @@
-import { StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '@/lib/theme';
+import { Redirect } from 'expo-router';
 
-export default function HomeScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Pravah</Text>
-    </View>
-  );
+/**
+ * Root entry — redirect into the tab navigator.
+ * Auth/onboarding gating will be added once the auth feature lands.
+ */
+export default function Index() {
+  return <Redirect href="/(tabs)" />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.neutral.bgPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xl,
-  },
-  title: {
-    fontSize: typography.size.display,
-    fontWeight: typography.weight.medium,
-    color: colors.brand.purple,
-    letterSpacing: 1,
-  },
-});

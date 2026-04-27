@@ -20,9 +20,9 @@ function tryLoadSentry(): typeof SentryType | null {
 }
 
 export function initMonitoring(): void {
-  if (!dsn) {
+  if (!dsn || dsn.includes('<')) {
     if (__DEV__) {
-      console.warn('[monitoring] EXPO_PUBLIC_SENTRY_DSN not set — Sentry disabled');
+      console.warn('[monitoring] EXPO_PUBLIC_SENTRY_DSN not configured — Sentry disabled');
     }
     return;
   }
