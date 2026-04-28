@@ -1,9 +1,10 @@
 import { Feather } from '@expo/vector-icons';
-import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Card } from '@/components/Card';
 import { GhostButton } from '@/components/GhostButton';
+import { useAuth } from '@/features/auth';
 import { colors, fonts, radii, typography } from '@/lib/theme';
 
 const STATS = [
@@ -30,6 +31,43 @@ const SECTIONS = ['Stats', 'Goal setting', 'Preferences', 'Settings', 'Integrati
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const { user, signOut, deleteAccount } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleSignOut() {
+    setSigningOut(true);
+    try {
+      await signOut();
+    } finally {
+      setSigningOut(false);
+    }
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Delete account',
+      'This permanently deletes your account and all your data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteAccount();
+            } catch {
+              Alert.alert('Error', 'Could not delete account. Please try again.');
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ],
+    );
+  }
+
   return (
     <ScrollView
       style={styles.screen}
@@ -46,7 +84,7 @@ export default function ProfileScreen() {
           <Feather name="user" size={32} color={colors.text.muted} />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.name}>Avinash Toppo</Text>
+          <Text style={styles.name}>{user?.phone ?? user?.email ?? 'You'}</Text>
           <Text style={styles.tagline}>Weight loss · 1800 cal/day</Text>
         </View>
         <GhostButton label="Settings" size="sm" />
@@ -73,6 +111,24 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={18} color={colors.gray[300]} />
           </Pressable>
         ))}
+      </Card>
+
+      {/* Account actions */}
+      <Card style={[styles.listCard, styles.accountCard]}>
+        <Pressable
+          onPress={handleSignOut}
+          disabled={signingOut}
+          style={[styles.accountRow, styles.divider]}
+        >
+          <Feather name="log-out" size={16} color={colors.text.primary} />
+          <Text style={styles.accountText}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
+        </Pressable>
+        <Pressable onPress={handleDeleteAccount} disabled={deleting} style={styles.accountRow}>
+          <Feather name="trash-2" size={16} color={colors.rose} />
+          <Text style={[styles.accountText, styles.deleteText]}>
+            {deleting ? 'Deleting…' : 'Delete account'}
+          </Text>
+        </Pressable>
       </Card>
     </ScrollView>
   );
@@ -205,4 +261,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.gray[200],
   },
+
+  accountCard: { overflow: 'hidden', marginBottom: 40 },
+  accountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  accountText: {
+    fontFamily: fonts.uiSemi,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+  },
+  deleteText: { color: colors.rose },
 });
