@@ -3,9 +3,10 @@ import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PrimaryButton } from '@/components/PrimaryButton';
-import { colors, fonts, radii, typography } from '@/lib/theme';
+import { colors, fonts, typography } from '@/lib/theme';
+import { ProgressBar } from './ProgressBar';
 
-interface StepShellProps {
+interface OnboardingLayoutProps {
   step: 1 | 2 | 3 | 4;
   title: string;
   subtitle?: string;
@@ -22,21 +23,21 @@ const TOTAL_STEPS = 4;
 
 /**
  * Shared chrome for the 4 onboarding steps: progress bar, back button,
- * question + body, sticky "Next" CTA. Keeps each step file focused on
- * its question + option list.
+ * question + body, sticky CTA. Keeps each step file focused on its
+ * question + option list.
  */
-export function StepShell({
+export function OnboardingLayout({
   step,
   title,
   subtitle,
   canBack = step > 1,
   canNext,
-  nextLabel = 'Next',
+  nextLabel = 'Continue',
   isSubmitting,
   errorMessage,
   onNext,
   children,
-}: StepShellProps) {
+}: OnboardingLayoutProps) {
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.screen, { paddingTop: insets.top + 16 }]}>
@@ -49,12 +50,7 @@ export function StepShell({
         ) : (
           <View style={styles.backBtn} />
         )}
-        <View style={styles.progressTrack}>
-          <View style={[styles.progressFill, { width: `${(step / TOTAL_STEPS) * 100}%` }]} />
-        </View>
-        <Text style={styles.stepCount}>
-          {step}/{TOTAL_STEPS}
-        </Text>
+        <ProgressBar step={step} total={TOTAL_STEPS} />
       </View>
 
       {/* Question */}
@@ -90,25 +86,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   backBtn: { width: 32, height: 32, justifyContent: 'center' },
-  progressTrack: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.gray[200],
-    borderRadius: radii.full,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.text.primary,
-    borderRadius: radii.full,
-  },
-  stepCount: {
-    fontFamily: fonts.label,
-    fontSize: typography.size.xs,
-    color: colors.text.muted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-  },
   body: { flex: 1, paddingHorizontal: 24, paddingTop: 32 },
   title: {
     fontFamily: fonts.display,

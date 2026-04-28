@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { OptionCard } from '@/features/preferences/components/OptionCard';
-import { StepShell } from '@/features/preferences/components/StepShell';
+import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
+import { OptionCard } from '@/components/onboarding/OptionCard';
 import { useOnboarding } from '@/features/preferences';
 import type { DietType } from '@/features/preferences';
 
@@ -12,15 +12,15 @@ const DIETS: { value: DietType; emoji: string; label: string }[] = [
 ];
 
 export default function Step1Diet() {
-  const { draft, setField } = useOnboarding();
+  const { answers, setField } = useOnboarding();
 
   return (
-    <StepShell
+    <OnboardingLayout
       step={1}
-      title="What do you eat?"
-      subtitle="Helps us pick recipes you'll actually enjoy."
+      title="What's your diet?"
+      subtitle="We'll only suggest meals that match."
       canBack={false}
-      canNext={!!draft.dietType}
+      canNext={!!answers.dietType}
       onNext={() => router.push('/(onboarding)/step-2')}
     >
       {DIETS.map((d) => (
@@ -28,10 +28,10 @@ export default function Step1Diet() {
           key={d.value}
           emoji={d.emoji}
           label={d.label}
-          selected={draft.dietType === d.value}
+          selected={answers.dietType === d.value}
           onPress={() => setField('dietType', d.value)}
         />
       ))}
-    </StepShell>
+    </OnboardingLayout>
   );
 }
