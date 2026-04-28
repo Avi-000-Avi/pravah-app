@@ -1,9 +1,11 @@
-import { Redirect } from 'expo-router';
+import { View } from 'react-native';
+import { colors } from '@/lib/theme';
 
 /**
- * Root entry — redirect into the tab navigator.
- * Auth/onboarding gating will be added once the auth feature lands.
+ * Root entry — renders nothing. The route guard in `app/_layout.tsx`
+ * handles the redirect to `(auth)`, `(onboarding)`, or `(tabs)` based
+ * on session + onboarding state.
  */
 export default function Index() {
-  return <Redirect href="/(tabs)" />;
+  return <View style={{ flex: 1, backgroundColor: colors.bg }} />;
 }

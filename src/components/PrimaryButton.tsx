@@ -5,6 +5,7 @@ import {
   Text,
   View,
   type PressableProps,
+  type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { colors, fonts, radii, typography } from '@/lib/theme';
@@ -13,7 +14,7 @@ interface PrimaryButtonProps extends Omit<PressableProps, 'style'> {
   label: string;
   /** Render an optional leading element (icon / "+" glyph). */
   leading?: React.ReactNode;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
