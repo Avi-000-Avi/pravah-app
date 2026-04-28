@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { PillSelector } from '@/features/preferences/components/OptionCard';
-import { StepShell } from '@/features/preferences/components/StepShell';
+import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
+import { PillSelector } from '@/components/onboarding/PillSelector';
 import { useOnboarding } from '@/features/preferences';
 
 // `240` doubles as our "no limit" sentinel — the column max in the migration.
@@ -9,45 +8,35 @@ const PREP_OPTIONS = [
   { value: 15, label: '15 min' },
   { value: 30, label: '30 min' },
   { value: 45, label: '45 min' },
-  { value: 60, label: '60 min' },
+  { value: 60, label: '1 hour' },
   { value: NO_LIMIT, label: 'No limit' },
 ];
 
 export default function Step4PrepTime() {
-  const { draft, setField, submit } = useOnboarding();
-  const [error, setError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { answers, setField, isSubmitting, submitError, submit, clearError } = useOnboarding();
 
   async function onFinish() {
-    setError(null);
-    setIsSubmitting(true);
-    try {
-      await submit();
-      // Route guard in app/_layout.tsx now sees isOnboarded = true and
-      // routes to /(tabs). No explicit navigation needed.
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save your plan. Try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
+    clearError();
+    await submit();
+    // Navigation + state update happen inside submit() on success.
   }
 
   return (
-    <StepShell
+    <OnboardingLayout
       step={4}
-      title="Max time to prep a meal?"
-      subtitle="We'll keep recipes within this window."
+      title="How much time can you spend cooking?"
+      subtitle="Per meal, not per day."
       canNext={true}
-      nextLabel="Finish"
+      nextLabel="Let's go"
       isSubmitting={isSubmitting}
-      errorMessage={error}
+      errorMessage={submitError}
       onNext={onFinish}
     >
       <PillSelector<number>
         options={PREP_OPTIONS}
-        selected={draft.prepTimeMaxMin}
+        selected={answers.prepTimeMaxMin}
         onSelect={(v) => setField('prepTimeMaxMin', v)}
       />
-    </StepShell>
+    </OnboardingLayout>
   );
 }

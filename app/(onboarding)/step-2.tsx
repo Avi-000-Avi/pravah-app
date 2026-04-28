@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { OptionCard } from '@/features/preferences/components/OptionCard';
-import { StepShell } from '@/features/preferences/components/StepShell';
+import { OnboardingLayout } from '@/components/onboarding/OnboardingLayout';
+import { OptionCard } from '@/components/onboarding/OptionCard';
 import { useOnboarding } from '@/features/preferences';
 import type { FitnessGoal } from '@/features/preferences';
 
@@ -11,13 +11,14 @@ const GOALS: { value: FitnessGoal; emoji: string; label: string }[] = [
 ];
 
 export default function Step2Goal() {
-  const { draft, setField } = useOnboarding();
+  const { answers, setField } = useOnboarding();
 
   return (
-    <StepShell
+    <OnboardingLayout
       step={2}
-      title="What are you working towards?"
-      canNext={!!draft.goal}
+      title="What's your goal?"
+      subtitle="This shapes your macro targets and meal choices."
+      canNext={!!answers.goal}
       onNext={() => router.push('/(onboarding)/step-3')}
     >
       {GOALS.map((g) => (
@@ -25,10 +26,10 @@ export default function Step2Goal() {
           key={g.value}
           emoji={g.emoji}
           label={g.label}
-          selected={draft.goal === g.value}
+          selected={answers.goal === g.value}
           onPress={() => setField('goal', g.value)}
         />
       ))}
-    </StepShell>
+    </OnboardingLayout>
   );
 }
