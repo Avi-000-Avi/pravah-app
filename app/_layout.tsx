@@ -39,7 +39,7 @@ export default function RootLayout() {
  * Route guard: subscribes to supabase auth + the persisted onboarding flag,
  * then redirects between (auth) / (onboarding) / (tabs) based on state.
  *
- *   no session                -> /(auth)/phone
+ *   no session                -> /(auth)/email
  *   session, !onboarded       -> /(onboarding)/step-1
  *   session, onboarded        -> /(tabs)
  */
@@ -103,7 +103,7 @@ function RouteGuard() {
     const top = segments[0]; // '(auth)' | '(onboarding)' | '(tabs)' | undefined
 
     if (!session && top !== '(auth)') {
-      router.replace('/(auth)/phone');
+      router.replace('/(auth)/email');
     } else if (session && !isOnboarded && top !== '(onboarding)') {
       router.replace('/(onboarding)/step-1');
     } else if (session && isOnboarded && top !== '(tabs)') {
