@@ -1,23 +1,20 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
-import { supabase } from '@/lib/supabase';
 import { useOnboardingStore } from '../store/onboardingStore';
 import type { OnboardingDraft } from '../types/preferences.types';
 
 /**
- * Onboarding orchestration hook.
+ * Onboarding orchestration hook — auth disabled.
  *
  * Reads the user's answers from the (in-memory) draft store, exposes a
  * single `submit()` that:
- *   1. Validates required answers (diet + goal — meal count and prep
- *      time always have defaults).
- *   2. Upserts the row into `meal_preferences`.
- *   3. Flips `isOnboarded = true` (persisted to MMKV by authStore).
- *   4. Resets the draft store and replaces navigation to /(tabs).
+ *   1. Validates required answers (diet + goal).
+ *   2. Flips `isOnboarded = true` (persisted to MMKV by authStore).
+ *   3. Resets the draft store and replaces navigation to /(tabs).
  *
- * Errors are surfaced via `submitError` rather than thrown so the
- * step-4 screen can render a friendly retry without losing answers.
+ * Supabase upsert is skipped while auth is disabled — re-enable when
+ * auth is wired back in.
  */
 export function useOnboarding() {
   const dietType = useOnboardingStore((s) => s.dietType);
@@ -48,23 +45,7 @@ export function useOnboarding() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      const { data: userData, error: userErr } = await supabase.auth.getUser();
-      if (userErr || !userData.user) {
-        throw new Error('Your session expired. Sign in again to continue.');
-      }
-
-      const { error } = await supabase.from('meal_preferences').upsert(
-        {
-          user_id: userData.user.id,
-          diet_type: dietType,
-          goal,
-          meal_count: mealCount,
-          prep_time_max_min: prepTimeMaxMin,
-        },
-        { onConflict: 'user_id' },
-      );
-      if (error) throw error;
-
+      // Auth disabled — skip Supabase upsert, persist flag locally only.
       setOnboarded(true);
       reset();
       router.replace('/(tabs)');
@@ -74,7 +55,7 @@ export function useOnboarding() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [dietType, goal, mealCount, prepTimeMaxMin, reset, setOnboarded]);
+  }, [dietType, goal, reset, setOnboarded]);
 
   const clearError = useCallback(() => setSubmitError(null), []);
 

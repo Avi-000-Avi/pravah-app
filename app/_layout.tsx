@@ -8,7 +8,6 @@ import { useAuthStore } from '@/features/auth/store/authStore';
 import { initAnalytics } from '@/lib/analytics';
 import { usePravahFonts } from '@/lib/fonts';
 import { initMonitoring } from '@/lib/monitoring';
-import { supabase } from '@/lib/supabase';
 
 const queryClient = new QueryClient();
 
@@ -36,80 +35,37 @@ export default function RootLayout() {
 }
 
 /**
- * Route guard: subscribes to supabase auth + the persisted onboarding flag,
- * then redirects between (auth) / (onboarding) / (tabs) based on state.
+ * Route guard — auth disabled.
+ * Reads the MMKV-persisted `isOnboarded` flag and routes accordingly:
  *
- *   no session                -> /(auth)/email
- *   session, !onboarded       -> /(onboarding)/step-1
- *   session, onboarded        -> /(tabs)
+ *   !isOnboarded  -> /(onboarding)/step-1
+ *   isOnboarded   -> /(tabs)
  */
 function RouteGuard() {
   const router = useRouter();
   const segments = useSegments();
 
-  const session = useAuthStore((s) => s.session);
   const isOnboarded = useAuthStore((s) => s.isOnboarded);
   const isLoading = useAuthStore((s) => s.isLoading);
-  const setSession = useAuthStore((s) => s.setSession);
   const setLoading = useAuthStore((s) => s.setLoading);
-  const setOnboarded = useAuthStore((s) => s.setOnboarded);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
 
-  // Boot: hydrate session from supabase, then check onboarding state.
+  // Boot: nothing to hydrate — just hide the splash screen.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      setSession(data.session);
+    setLoading(false);
+    SplashScreen.hideAsync().catch(() => undefined);
+  }, [setLoading]);
 
-      if (data.session) {
-        const { data: prefs } = await supabase
-          .from('meal_preferences')
-          .select('user_id')
-          .eq('user_id', data.session.user.id)
-          .maybeSingle();
-        if (!cancelled) setOnboarded(!!prefs);
-      }
-      setLoading(false);
-      SplashScreen.hideAsync().catch(() => undefined);
-    })();
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
-      setSession(nextSession);
-      if (event === 'SIGNED_OUT') {
-        clearAuth();
-        return;
-      }
-      if (nextSession) {
-        const { data: prefs } = await supabase
-          .from('meal_preferences')
-          .select('user_id')
-          .eq('user_id', nextSession.user.id)
-          .maybeSingle();
-        setOnboarded(!!prefs);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      sub.subscription.unsubscribe();
-    };
-  }, [setSession, setLoading, setOnboarded, clearAuth]);
-
-  // Drive navigation off (session, isOnboarded, current segment).
+  // Drive navigation off isOnboarded.
   useEffect(() => {
     if (isLoading) return;
-    const top = segments[0]; // '(auth)' | '(onboarding)' | '(tabs)' | undefined
+    const top = segments[0]; // '(onboarding)' | '(tabs)' | undefined
 
-    if (!session && top !== '(auth)') {
-      router.replace('/(auth)/email');
-    } else if (session && !isOnboarded && top !== '(onboarding)') {
+    if (!isOnboarded && top !== '(onboarding)') {
       router.replace('/(onboarding)/step-1');
-    } else if (session && isOnboarded && top !== '(tabs)') {
+    } else if (isOnboarded && top !== '(tabs)') {
       router.replace('/(tabs)');
     }
-  }, [session, isOnboarded, isLoading, segments, router]);
+  }, [isOnboarded, isLoading, segments, router]);
 
   return <Slot />;
 }
