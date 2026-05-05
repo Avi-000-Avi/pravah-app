@@ -1,47 +1,55 @@
 /**
- * Pravah Design System — theme tokens
+ * Pravah Design System — "Serene Flow" tokens
  *
- * Mirrors `pravah-design-system/export/tokens.css`. Naming follows
- * `--pravah-<category>-<name>` from the spec, flattened into TS objects.
+ * Derived from the Google Stitch export at:
+ * stitch_pravah_zero_decision_fitness_system/serene_flow/DESIGN.md
  *
- * Vibe rules:
- * - Soft, hand-painted, atmospheric — never sharp/geometric.
- * - Warm off-white background, warm near-black text.
- * - Pill-shaped CTAs (radius 52), card radius 14.
- * - Use only weights 400 (regular) and 700 (display); UI labels use 600.
- * - Sentence case in UI; SectionLabel/Pill apply uppercase via component.
+ * Material Design 3 warm palette + Newsreader (serif) / Manrope (sans).
+ *
+ * Rules:
+ * - Always use tokens — never hardcode hex values, sizes, or radii.
+ * - Sentence case in UI; label-caps components apply uppercase internally.
+ * - Tonal layering over shadows for depth (surface → surface2 → white).
+ * - Warm shadow tint: rgba(84,67,67,…) — never pure black.
  */
 
 export const colors = {
-  // Surfaces
-  bg: '#EFEBEB', // app background — warm off-white
-  surface: '#FAF9F9', // card / sheet
-  surface2: '#F5F3F3',
-  white: '#FFFFFF',
+  // Surfaces (tonal layering)
+  bg: '#fff8f7', // page background
+  surface: '#FAF9F9', // default card / sheet
+  surface2: '#f7ebeb', // slightly raised
+  surfaceLow: '#fcf1f0', // low elevation
+  surfaceHigh: '#f1e6e5', // elevated containers
+  white: '#ffffff',
 
   // Text
   text: {
-    primary: '#1C1717', // warm near-black
-    secondary: '#544343', // mid warm brown
-    muted: '#797575', // captions
-    dark: '#280B0B', // deep maroon — emphasis
+    primary: '#1f1a1a', // warm near-black
+    secondary: '#544342', // mid warm brown
+    muted: '#544342', // captions (intentionally same as secondary)
+    dark: '#5d1d20', // deep maroon — emphasis
     deep: '#230B28', // deep eggplant — display
-    inverse: '#FFFFFF',
+    inverse: '#faeeee', // text on dark surfaces
   },
 
-  // Brand accents
-  rose: '#DC8282',
-  roseLight: '#F6969A',
-  rosePale: '#F2D0D0', // meal "Prepare" chip bg
-  lavender: '#ECD0F2',
-  lavenderMid: '#CBB2DC',
-  sky: '#D0E0F2',
-  skyMid: '#82AEE2',
-  mint: '#9AF6D7',
-  amber: '#FBD695',
-  eggplant: '#230B28',
+  // Brand
+  primary: '#934748', // brand maroon — structural emphasis
+  primaryContainer: '#dc8282', // rose — primary CTA buttons
+  secondary: '#725475', // eggplant secondary
+  secondaryContainer: '#fdd6fe', // lavender container
 
-  // Status pill text colors (chosen from the design)
+  // Functional accents
+  rose: '#DC8282', // CTA buttons
+  lavender: '#ECD0F2', // active tab pill, chips
+  lavenderBorder: '#CBB2DC', // nav border, card borders (30% opacity)
+  mint: '#9AF6D7', // growth / fitness rings
+  sky: '#D0E0F2', // recovery / sleep rings
+  eggplant: '#230B28', // icon / text on lavender
+  warmBrown: '#544343', // chevrons, focus borders
+  tonal: '#EFEBEB', // ring tracks, background layering
+  amber: '#FBD695', // warning accent
+
+  // Status (Pills)
   status: {
     successBg: '#9AF6D7',
     successText: '#04302A',
@@ -53,7 +61,11 @@ export const colors = {
     infoText: '#0B1928',
   },
 
-  // Neutrals (4-step warm gray scale used across borders/dividers)
+  // Outline
+  outline: '#867272',
+  outlineVariant: '#d9c1c0',
+
+  // Warm gray scale (borders, dividers)
   gray: {
     100: '#F5F3F3',
     200: '#E4DEDE',
@@ -65,112 +77,130 @@ export const colors = {
     800: '#1C1717',
   },
 
-  // Navigation pill
+  // Navigation
   nav: {
-    bg: 'rgba(255,255,255,0.88)',
-    active: '#1C1717',
-    inactive: '#797575',
+    bg: '#FAF9F9',
+    active: '#ECD0F2', // lavender active pill
+    activeText: '#230B28', // eggplant icon on active
+    inactive: 'rgba(84,67,67,0.5)',
   },
 } as const;
 
-/** 4px base grid */
+/** 8px base grid — matches Stitch spacing spec */
 export const spacing = {
-  '1': 4,
-  '2': 6,
-  '3': 8,
-  '4': 10,
-  '5': 12,
-  '6': 16,
-  '7': 20,
-  '8': 24,
-  '9': 32,
-  '10': 48,
-  '11': 64,
+  xs: 4,
+  sm: 12,
+  base: 8,
+  gutter: 16,
+  margin: 20,
+  md: 24,
+  lg: 48,
+  xl: 80,
 } as const;
 
 export const radii = {
   sm: 4,
   md: 12,
-  card: 14,
-  pill: 52,
+  lg: 16,
+  card: 24, // rounded-3xl
+  xl: 24,
+  pill: 9999,
   full: 9999,
 } as const;
 
 /**
- * Font families. Loaded via `useFonts` in `src/lib/fonts.ts`.
- * Always reference these constants; never hardcode the family string.
+ * Font families — Newsreader (serif editorial) + Manrope (functional sans).
+ * Loaded via `usePravahFonts()` in `src/lib/fonts.ts`.
+ * Always reference these constants; never hardcode a family string.
  */
 export const fonts = {
-  display: 'Syne_700Bold', // hero/display
-  displayRegular: 'Syne_400Regular',
-  ui: 'Urbanist_700Bold', // buttons, numbers
-  uiSemi: 'Urbanist_600SemiBold',
-  body: 'OpenSans_400Regular', // body copy
-  bodySemi: 'OpenSans_600SemiBold',
-  bodyBold: 'OpenSans_700Bold',
-  label: 'PlusJakartaSans_600SemiBold',
-  serif: 'Georgia', // greeting — system serif
-  inter: 'Inter_700Bold', // status bar
+  // Newsreader — display / editorial serif
+  display: 'Newsreader_600SemiBold',
+  displayItalic: 'Newsreader_400Regular_Italic',
+  displayRegular: 'Newsreader_400Regular',
+
+  // Manrope — functional sans
+  ui: 'Manrope_700Bold', // numbers, buttons
+  uiSemi: 'Manrope_600SemiBold',
+  body: 'Manrope_400Regular', // body copy
+  bodySemi: 'Manrope_600SemiBold',
+  bodyBold: 'Manrope_700Bold',
+  label: 'Manrope_700Bold', // label-caps (uppercase overlines)
+  statsThin: 'Manrope_200ExtraLight', // large stat numbers (40px)
 } as const;
 
 export const typography = {
   size: {
-    xs: 10,
-    sm: 12,
-    base: 14,
-    md: 16,
-    lg: 18,
-    xl: 22,
-    '2xl': 24,
-    '3xl': 36,
-    '4xl': 42,
-    '5xl': 64,
+    xs: 10, // label-caps
+    sm: 12, // label-caps (rendered size)
+    base: 14, // body-md default
+    md: 16, // body-md
+    lg: 18, // body-lg
+    xl: 24, // headline-md
+    '2xl': 32, // headline-lg
+    '3xl': 40, // stats-lg
+    '4xl': 48, // display
   },
-  tracking: {
-    display: 0.02,
-    body: 0.05,
-    tight: -0.04,
-    wide: 0.08,
+  weight: {
+    thin: '200' as const,
+    regular: '400' as const,
+    medium: '500' as const,
+    semibold: '600' as const,
+    bold: '700' as const,
   },
   leading: {
-    tight: 1,
-    snug: 1.2,
+    tight: 1.0,
+    snug: 1.1,
     normal: 1.5,
+    relaxed: 1.6,
   },
-  // Legacy hint — primitives use uppercase + wide tracking for SectionLabel/Pill.
-  label: {
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
+  /** Letter-spacing multipliers — applied as `fontSize * tracking.X`. */
+  tracking: {
+    display: -0.01, // subtle tight tracking for serif headlines
+    tight: -0.005, // gentle tightening for large stats
+    normal: 0,
   },
 } as const;
 
-/** RN shadow approximations of Pravah S1 / sm */
+/** Warm-tinted shadows — use rgba(84,67,67,…) not black */
 export const shadows = {
+  card: {
+    shadowColor: 'rgba(84,67,67,1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 30,
+    elevation: 3,
+  },
+  cardSubtle: {
+    shadowColor: 'rgba(84,67,67,1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 20,
+    elevation: 1,
+  },
+  nav: {
+    shadowColor: 'rgba(84,67,67,1)',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 30,
+    elevation: 8,
+  },
+  // Legacy aliases used by existing components
   s1: {
-    // diffused outer glow — nav, elevated floating elements
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
+    shadowColor: 'rgba(84,67,67,1)',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 30,
     elevation: 8,
   },
   sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowColor: 'rgba(84,67,67,1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.02,
+    shadowRadius: 20,
+    elevation: 1,
   },
 } as const;
 
-/** Effect tokens — for inline use; see `effects.css` reference. */
-export const effects = {
-  blurB1: 4,
-  blurB2: 8,
-  noiseOpacity: 0.06,
-  glassBg: 'rgba(255,255,255,0.4)',
-  glassBorder: 'rgba(255,255,255,0.6)',
-} as const;
-
-const theme = { colors, spacing, radii, fonts, typography, shadows, effects };
+const theme = { colors, spacing, radii, fonts, typography, shadows };
 export default theme;
