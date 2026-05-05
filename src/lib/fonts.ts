@@ -1,33 +1,49 @@
 /**
- * Pravah font loading.
+ * Pravah font loading — "Serene Flow" + onboarding "Warm Serif" edition.
  *
- * Loads the brand families used in the design system. Hook returns
- * `loaded` so the root layout can hold the splash screen until fonts
- * are ready (prevents the FOUT of system fonts swapping to brand).
+ * Newsreader (serif) + Manrope (sans) — main tab screens.
+ * Cormorant Garamond (serif) + Jost (sans) — onboarding v2 screens.
+ *
+ * Hook returns `loaded` so the root layout can hold the splash screen
+ * until fonts are ready, preventing FOUT.
  */
 
-import { useFonts as useExpoFonts } from 'expo-font';
-import { Syne_400Regular, Syne_700Bold } from '@expo-google-fonts/syne';
-import { Urbanist_600SemiBold, Urbanist_700Bold } from '@expo-google-fonts/urbanist';
 import {
-  OpenSans_400Regular,
-  OpenSans_600SemiBold,
-  OpenSans_700Bold,
-} from '@expo-google-fonts/open-sans';
-import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans';
-import { Inter_700Bold } from '@expo-google-fonts/inter';
+  CormorantGaramond_300Light,
+  CormorantGaramond_300Light_Italic,
+  CormorantGaramond_500Medium,
+} from '@expo-google-fonts/cormorant-garamond';
+import { Jost_300Light, Jost_400Regular, Jost_500Medium } from '@expo-google-fonts/jost';
+import {
+  Manrope_200ExtraLight,
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import {
+  Newsreader_400Regular,
+  Newsreader_400Regular_Italic,
+  Newsreader_600SemiBold,
+} from '@expo-google-fonts/newsreader';
+import { useFonts as useExpoFonts } from 'expo-font';
 
 export function usePravahFonts(): boolean {
   const [loaded] = useExpoFonts({
-    Syne_400Regular,
-    Syne_700Bold,
-    Urbanist_600SemiBold,
-    Urbanist_700Bold,
-    OpenSans_400Regular,
-    OpenSans_600SemiBold,
-    OpenSans_700Bold,
-    PlusJakartaSans_600SemiBold,
-    Inter_700Bold,
+    // Serene Flow (main app)
+    Newsreader_400Regular,
+    Newsreader_400Regular_Italic,
+    Newsreader_600SemiBold,
+    Manrope_200ExtraLight,
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
+    // Warm Serif (onboarding v2)
+    CormorantGaramond_300Light,
+    CormorantGaramond_300Light_Italic,
+    CormorantGaramond_500Medium,
+    Jost_300Light,
+    Jost_400Regular,
+    Jost_500Medium,
   });
   return loaded;
 }

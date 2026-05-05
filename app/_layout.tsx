@@ -40,7 +40,7 @@ export default function RootLayout() {
  * then redirects between (auth) / (onboarding) / (tabs) based on state.
  *
  *   no session                -> /(auth)/email
- *   session, !onboarded       -> /(onboarding)/step-1
+ *   session, !onboarded       -> /(onboarding)/welcome
  *   session, onboarded        -> /(tabs)
  */
 function RouteGuard() {
@@ -105,7 +105,7 @@ function RouteGuard() {
     if (!session && top !== '(auth)') {
       router.replace('/(auth)/email');
     } else if (session && !isOnboarded && top !== '(onboarding)') {
-      router.replace('/(onboarding)/step-1');
+      router.replace('/(onboarding)/welcome');
     } else if (session && isOnboarded && top !== '(tabs)') {
       router.replace('/(tabs)');
     }
