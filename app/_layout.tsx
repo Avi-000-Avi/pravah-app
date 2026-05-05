@@ -61,7 +61,7 @@ function RouteGuard() {
     const top = segments[0]; // '(onboarding)' | '(tabs)' | undefined
 
     if (!isOnboarded && top !== '(onboarding)') {
-      router.replace('/(onboarding)/step-1');
+      router.replace('/(onboarding)/welcome');
     } else if (isOnboarded && top !== '(tabs)') {
       router.replace('/(tabs)');
     }

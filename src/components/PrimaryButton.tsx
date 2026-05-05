@@ -36,7 +36,7 @@ export function PrimaryButton({ label, leading, style, ...rest }: PrimaryButtonP
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: colors.text.primary,
+    backgroundColor: colors.rose,
     borderRadius: radii.pill,
     paddingHorizontal: 22,
     paddingVertical: 12,
