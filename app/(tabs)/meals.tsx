@@ -4,43 +4,75 @@
  * Interactive: log meal → fill animation → state update; swap alternatives; skip.
  */
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useMeals } from '@/features/meals';
+import type { Meal, MealSlot } from '@/features/meals';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
 type Phase = 'ready' | 'logging' | 'logged' | 'swapping';
 
-const MEALS = [
-  {
-    name: 'Breakfast',
-    time: '8:00 AM',
-    items: 'Dal Paratha · Curd · Banana',
-    protein: 28,
-    carbs: 62,
-    fat: 12,
-    cal: 480,
-  },
-  {
-    name: 'Lunch',
-    time: '1:00 PM',
-    items: 'Paneer Bowl · Roti · Salad',
-    protein: 38,
-    carbs: 52,
-    fat: 14,
-    cal: 520,
-  },
-  {
-    name: 'Dinner',
-    time: '7:30 PM',
-    items: 'Moong Dal · Rice · Sabzi',
-    protein: 24,
-    carbs: 70,
-    fat: 8,
-    cal: 440,
-  },
-];
+/**
+ * Slot → display label / time-of-day. The catalog stores meal_slot but
+ * not a wall-clock time; the time shown next to each card is a UI-level
+ * convention until per-user scheduling lands in user_meal_plans.
+ */
+const SLOT_ORDER: readonly MealSlot[] = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+const SLOT_LABEL: Record<MealSlot, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+};
+const SLOT_TIME: Record<MealSlot, string> = {
+  breakfast: '8:00 AM',
+  lunch: '1:00 PM',
+  snack: '4:00 PM',
+  dinner: '7:30 PM',
+};
+
+/** Display shape derived from the catalog Meal row. */
+interface MealCard {
+  name: string; // slot label, e.g. "Breakfast"
+  time: string;
+  items: string;
+  protein: number;
+  carbs: number;
+  fat: number;
+  cal: number;
+}
+
+function toMealCard(meal: Meal): MealCard {
+  return {
+    name: SLOT_LABEL[meal.meal_slot],
+    time: SLOT_TIME[meal.meal_slot],
+    items: meal.description ?? meal.name,
+    protein: meal.protein_g,
+    carbs: meal.carbs_g,
+    fat: meal.fat_g,
+    cal: meal.calories_kcal,
+  };
+}
+
+/**
+ * Pick one meal per slot, in canonical order, from the catalog rows.
+ * Until per-user plan generation lands, this acts as today's plan.
+ */
+function buildTodayPlan(meals: readonly Meal[]): MealCard[] {
+  const bySlot = new Map<MealSlot, Meal>();
+  for (const m of meals) {
+    if (!bySlot.has(m.meal_slot)) bySlot.set(m.meal_slot, m);
+  }
+  return SLOT_ORDER.flatMap((slot) => {
+    const m = bySlot.get(slot);
+    return m ? [toMealCard(m)] : [];
+  });
+}
+
+// Smart-swap suggestions remain hardcoded for now. A follow-up will source
+// these from the same catalog (calorie-matched alternatives in the same slot).
 const SWAPS = [
   { name: 'Tofu Stir Fry', protein: 36, cal: 490 },
   { name: 'Egg Bhurji Bowl', protein: 42, cal: 510 },
@@ -50,11 +82,13 @@ const SWAPS = [
 export default function MealsScreen() {
   const insets = useSafeAreaInsets();
   const { user, today, setMealLogged } = useAppStore();
+  const { data: catalog, isLoading, error, refetch } = useMeals();
+  const MEALS = useMemo<readonly MealCard[]>(() => buildTodayPlan(catalog ?? []), [catalog]);
   const [activeMeal, setActiveMeal] = useState(today.meals.done);
   const [phase, setPhase] = useState<Phase>('ready');
   const [fillPct, setFillPct] = useState(0);
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
-  const allDone = activeMeal >= MEALS.length;
+  const allDone = MEALS.length > 0 && activeMeal >= MEALS.length;
 
   const handleEat = () => {
     setPhase('logging');
@@ -148,6 +182,39 @@ export default function MealsScreen() {
             </View>
           ))}
         </View>
+
+        {/* Loading skeleton — 3 placeholder cards while the catalog query resolves. */}
+        {isLoading && (
+          <View style={st.skeletonGroup}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[st.mealCard, st.skeletonCard]}>
+                <View style={st.skeletonLineWide} />
+                <View style={st.skeletonLineNarrow} />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Error fallback — surface the message with a retry. */}
+        {error && !isLoading && (
+          <View style={st.errorCard}>
+            <Text style={st.errorTitle}>Could not load meals</Text>
+            <Text style={st.errorBody}>{error.message}</Text>
+            <Pressable style={st.errorRetry} onPress={() => refetch()}>
+              <Text style={st.errorRetryTxt}>Try again</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {/* Empty catalog — defensive: schema is live but seed is missing. */}
+        {!isLoading && !error && MEALS.length === 0 && (
+          <View style={st.errorCard}>
+            <Text style={st.errorTitle}>No meals available</Text>
+            <Text style={st.errorBody}>
+              The meal catalog is empty. Run the local seed or contact an admin.
+            </Text>
+          </View>
+        )}
 
         {/* Meal cards */}
         {MEALS.map((meal, i) => {
@@ -445,4 +512,36 @@ const st = StyleSheet.create({
   allDone: { borderRadius: radii.card, padding: 20, alignItems: 'center', gap: 8 },
   allDoneTitle: { fontFamily: fonts.display, fontSize: 22, color: colors.eggplant },
   allDoneSub: { fontFamily: fonts.body, fontSize: 13, color: `${colors.eggplant}aa` },
+  skeletonGroup: { gap: 14 },
+  skeletonCard: { padding: 18, gap: 10 },
+  skeletonLineWide: { height: 14, width: '60%', borderRadius: 4, backgroundColor: colors.tonal },
+  skeletonLineNarrow: { height: 10, width: '35%', borderRadius: 4, backgroundColor: colors.tonal },
+  errorCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 18,
+    gap: 8,
+    alignItems: 'center',
+  },
+  errorTitle: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.text.primary },
+  errorBody: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  errorRetry: {
+    marginTop: 6,
+    backgroundColor: colors.rose,
+    borderRadius: radii.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  errorRetryTxt: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 });
