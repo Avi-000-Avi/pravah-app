@@ -7,7 +7,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useMeals } from '@/features/meals';
+import { useLogMeal, useMeals } from '@/features/meals';
 import type { Meal, MealSlot } from '@/features/meals';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
@@ -35,6 +35,10 @@ const SLOT_TIME: Record<MealSlot, string> = {
 
 /** Display shape derived from the catalog Meal row. */
 interface MealCard {
+  /** UUID of the public.meals row — needed to write user_meal_plans. */
+  mealId: string;
+  /** Enum key used as part of the user_meal_plans unique constraint. */
+  slot: MealSlot;
   name: string; // slot label, e.g. "Breakfast"
   time: string;
   items: string;
@@ -46,6 +50,8 @@ interface MealCard {
 
 function toMealCard(meal: Meal): MealCard {
   return {
+    mealId: meal.id,
+    slot: meal.meal_slot,
     name: SLOT_LABEL[meal.meal_slot],
     time: SLOT_TIME[meal.meal_slot],
     items: meal.description ?? meal.name,
@@ -83,6 +89,7 @@ export default function MealsScreen() {
   const insets = useSafeAreaInsets();
   const { user, today, setMealLogged } = useAppStore();
   const { data: catalog, isLoading, error, refetch } = useMeals();
+  const logMeal = useLogMeal();
   const MEALS = useMemo<readonly MealCard[]>(() => buildTodayPlan(catalog ?? []), [catalog]);
   const [activeMeal, setActiveMeal] = useState(today.meals.done);
   const [phase, setPhase] = useState<Phase>('ready');
@@ -91,6 +98,15 @@ export default function MealsScreen() {
   const allDone = MEALS.length > 0 && activeMeal >= MEALS.length;
 
   const handleEat = () => {
+    const meal = MEALS[activeMeal];
+    if (!meal) return;
+
+    // Fire the DB write immediately — the animation runs in parallel.
+    // Errors are captured to Sentry inside the mutationFn; they don't
+    // block the local phase machine so UX stays smooth even on poor networks.
+    const today_date = new Date().toISOString().split('T')[0] ?? '';
+    logMeal.mutate({ mealId: meal.mealId, slot: meal.slot, date: today_date });
+
     setPhase('logging');
     setFillPct(0);
     let p = 0;
