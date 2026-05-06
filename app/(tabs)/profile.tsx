@@ -6,12 +6,13 @@
  * activity heatmap, insight quote, muscle volume bars.
  */
 import { MaterialIcons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useAppStore } from '@/stores/appStore';
+import { supabase } from '@/lib/supabase';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
 const HEATMAP = [
@@ -35,7 +36,16 @@ const MUSCLES = [
 export default function DataScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAppStore();
-  const setOnboarded = useAuthStore((s) => s.setOnboarded);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  // Dev utility — signs out fully so the RouteGuard redirects to /(auth)/email,
+  // then the user can sign back in and run through onboarding fresh.
+  const handleReplayOnboarding = useCallback(async () => {
+    clearAuth(); // clears session + isOnboarded from MMKV store immediately
+    await supabase.auth.signOut(); // invalidate the server-side session token
+    // RouteGuard's onAuthStateChange listener fires next, sets session = null,
+    // and replaces navigation to /(auth)/email automatically.
+  }, [clearAuth]);
 
   const weekStats = [
     { label: 'Workouts', val: '5', prev: '4', unit: '' },
@@ -180,7 +190,12 @@ export default function DataScreen() {
         </View>
 
         {/* Dev: replay onboarding */}
-        <Pressable style={st.resetBtn} onPress={() => setOnboarded(false)}>
+        <Pressable
+          style={st.resetBtn}
+          onPress={() => {
+            void handleReplayOnboarding();
+          }}
+        >
           <MaterialIcons name="refresh" size={14} color={colors.text.muted} />
           <Text style={st.resetBtnTxt}>Replay onboarding</Text>
         </Pressable>
