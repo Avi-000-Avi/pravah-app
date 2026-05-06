@@ -1,20 +1,20 @@
 import { router } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { captureError } from '@/lib/monitoring';
+import { supabase } from '@/lib/supabase';
 import { useOnboardingStore } from '../store/onboardingStore';
 import type { OnboardingDraft } from '../types/preferences.types';
 
 /**
- * Onboarding orchestration hook — auth disabled.
+ * Onboarding orchestration hook.
  *
  * Reads the user's answers from the (in-memory) draft store, exposes a
  * single `submit()` that:
  *   1. Validates required answers (diet + goal).
- *   2. Flips `isOnboarded = true` (persisted to MMKV by authStore).
- *   3. Resets the draft store and replaces navigation to /(tabs).
- *
- * Supabase upsert is skipped while auth is disabled — re-enable when
- * auth is wired back in.
+ *   2. Upserts the row into public.meal_preferences (idempotent via user_id PK).
+ *   3. Flips `isOnboarded = true` (persisted to MMKV by authStore).
+ *   4. Resets the draft store and replaces navigation to /(tabs).
  */
 export function useOnboarding() {
   const dietType = useOnboardingStore((s) => s.dietType);
@@ -45,7 +45,31 @@ export function useOnboarding() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
-      // Auth disabled — skip Supabase upsert, persist flag locally only.
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Not authenticated — please sign in and try again.');
+      }
+
+      // Upsert on user_id PK so replaying onboarding overwrites the existing row.
+      const { error } = await supabase.from('meal_preferences').upsert(
+        {
+          user_id: session.user.id,
+          diet_type: dietType,
+          goal,
+          meal_count: mealCount,
+          prep_time_max_min: prepTimeMaxMin,
+        },
+        { onConflict: 'user_id' },
+      );
+
+      if (error) {
+        captureError(error);
+        throw error;
+      }
+
       setOnboarded(true);
       reset();
       router.replace('/(tabs)');
@@ -55,7 +79,7 @@ export function useOnboarding() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [dietType, goal, reset, setOnboarded]);
+  }, [dietType, goal, mealCount, prepTimeMaxMin, reset, setOnboarded]);
 
   const clearError = useCallback(() => setSubmitError(null), []);
 
