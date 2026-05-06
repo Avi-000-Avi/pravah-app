@@ -7,10 +7,13 @@
 
 ## 🔥 Current Sprint
 
-- [ ] Wire real meal data from Supabase (replace hardcoded `MEALS` array in `meals.tsx`)
+- [~] Wire real meal data from Supabase
+  - [x] Schema shipped (#7) — `public.meals` catalog + `public.user_meal_plans`
+  - [ ] Build `useMeals` TanStack Query hook
+  - [ ] Replace hardcoded `MEAL_DATA` in `app/(tabs)/meals.tsx` with real query
+  - [ ] Build `useLogMeal` mutation against `user_meal_plans`
 - [ ] Wire real workout data from Supabase (replace hardcoded `WORKOUT` object in `workout.tsx`)
 - [ ] Connect onboarding store → `usePreferences.submit()` → write to `public.meal_preferences`
-- [ ] Add `public.users` trigger: auto-insert row on `auth.users` creation
 - [ ] Implement "Replay onboarding" properly: call `clearAuth()` + `supabase.auth.signOut()` (currently only calls `setOnboarded(false)`)
 
 ---
@@ -28,12 +31,10 @@
 ### Data & Backend
 
 - [ ] Design `public.workouts` and `public.workout_logs` schema
-- [ ] Design `public.meal_logs` schema (daily meal tracking)
 - [ ] Design `public.daily_stats` schema (sleep, recovery, steps)
 - [ ] Design `public.grocery_lists` schema
-- [ ] Set up TanStack Query for all Supabase data fetching
+- [ ] Set up TanStack Query for all Supabase data fetching (first hook lands with `useMeals`)
 - [ ] Add RLS policies for all new tables
-- [ ] Seed local database with sample Indian meal plans
 
 ### Screens
 
@@ -62,6 +63,8 @@
 
 ## ✅ Completed
 
+- [x] Meals catalog + `user_meal_plans` schema with RLS, indexes, and 10-meal seed (#7)
+- [x] `public.users` auto-insert trigger on `auth.users` (`handle_new_user`, security-definer) — already in migration `20260428000302`
 - [x] Design system migration — "Serene Flow" tokens in `src/lib/theme.ts`
 - [x] Newsreader + Manrope font loading
 - [x] Custom tab bar with lavender pill active state

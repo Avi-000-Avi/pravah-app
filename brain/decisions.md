@@ -128,9 +128,28 @@
 
 ---
 
-## [TODO] — Real meal plan data model
+## [2026-05-06] — Hybrid meal data model (catalog + per-user plan rows)
 
-**Decision:** TBD
-**Context:** Meal data is currently hardcoded in screen files. Needs to move to Supabase + TanStack Query.
-**Options considered:** TBD
-**Final choice:** TBD
+**Decision:** Model meals as two tables.
+
+- `public.meals` — system-curated global catalog of meal templates (no `user_id`, read-only for any authenticated user, service-role-only writes).
+- `public.user_meal_plans` — per-user assignments of a meal template to a `(plan_date, meal_slot)` with full owner-only CRUD.
+
+`UNIQUE (user_id, plan_date, meal_slot)` enforces one meal per slot per day.
+
+**Context:** Hardcoded meal arrays in `meals.tsx` had to move to Supabase. Three viable shapes were on the table.
+
+**Options considered:**
+
+- A: Global templates + `user_meal_logs` only (no per-user assignment) — clean but loses the "smart-swap" interaction; the catalog row is the source of truth and per-day variation can't be expressed.
+- B: Per-user generated `meal_plans` — every meal is its own row owned by a user; needs a generator algorithm before any meal renders, and duplicates the same template thousands of times across users.
+- C: Hybrid — chosen.
+
+**Final choice:** Option C. Aligns with Pravah's "plans are curated by the system" non-goal (users do not author meals), while still letting each user's daily plan be its own mutable row that can be logged/swapped/skipped without mutating the shared catalog.
+
+**Consequences:**
+
+- Catalog edits go through Supabase Studio (no client-side mutation policies on `public.meals`). A simple admin tool may be needed once the catalog grows.
+- Smart-swap implementation just rewrites the `meal_id` on the existing `user_meal_plans` row — no history kept. If history becomes a requirement, the unique key needs `(user_id, plan_date, meal_slot, version)`.
+- A future plan-generator service will populate `user_meal_plans` daily from `meal_preferences`. That algorithm is its own design problem and is explicitly out of scope of #7.
+- Shipped in PR #7 (`feat: Add meals catalog and user_meal_plans schema`), seeded with 10 sample Indian meals.

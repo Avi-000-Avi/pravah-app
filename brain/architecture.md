@@ -31,6 +31,8 @@
 │  │  Auth         │  │  Postgres (RLS)          │   │
 │  │  Email/Google │  │  public.users            │   │
 │  │  Phone (TODO) │  │  public.meal_preferences │   │
+│  │               │  │  public.meals            │   │
+│  │               │  │  public.user_meal_plans  │   │
 │  └───────────────┘  └──────────────────────────┘   │
 │  ┌───────────────┐  ┌──────────────────────────┐   │
 │  │  Edge Funcs   │  │  MMKV (device local)     │   │
@@ -159,28 +161,98 @@ step-6 finish:
 - Edge function response: `{ success: true }` or `{ error: string, detail?: string }`
 - TanStack Query manages server state caching; Zustand is for UI + ephemeral session state only
 
-## Database Schema (known tables)
+## Database Schema
+
+Source of truth: `supabase/migrations/`. This is a summary of the deployed shape.
+
+### Enums
 
 ```sql
--- Inferred from types and edge function
+public.diet_type   = 'vegetarian' | 'non_vegetarian' | 'vegan' | 'eggetarian'
+public.fitness_goal = 'fat_loss' | 'muscle_gain' | 'maintenance'
+public.cooking_mode = 'i_cook' | 'someone_cooks_for_me' | 'mix'
+public.meal_slot   = 'breakfast' | 'lunch' | 'dinner' | 'snack'
+```
+
+### Tables
+
+```sql
 public.users (
-  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE
-  -- TODO: add profile columns as needed
+  id          uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name        text,
+  email       text,
+  phone       text,
+  age         int      CHECK (age > 0 AND age < 120),
+  sex         text     CHECK (sex IN ('male','female','other','prefer_not_to_say')),
+  height_cm   numeric  CHECK (height_cm > 0),
+  weight_kg   numeric  CHECK (weight_kg > 0),
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
 )
+-- Auto-populated by handle_new_user() trigger on auth.users INSERT
+-- RLS: read-own / update-own (no client INSERT — trigger handles it)
 
 public.meal_preferences (
-  user_id uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
-  diet_type text,          -- 'vegetarian' | 'non_vegetarian' | 'vegan' | 'eggetarian'
-  goal text,               -- 'fat_loss' | 'muscle_gain' | 'maintenance'
-  meal_count int,          -- 2..6
-  prep_time_max_min int,   -- 5..240
-  budget_weekly_inr int,
-  cooking_mode text,
-  cuisines text[],
-  allergies text[],
-  avoid text[],
-  health_conditions text[],
-  created_at timestamptz,
-  updated_at timestamptz
+  user_id           uuid PRIMARY KEY REFERENCES public.users(id) ON DELETE CASCADE,
+  diet_type         public.diet_type    NOT NULL,
+  goal              public.fitness_goal NOT NULL,
+  meal_count        int                 NOT NULL CHECK (meal_count BETWEEN 2 AND 6),
+  prep_time_max_min int                 NOT NULL CHECK (prep_time_max_min BETWEEN 5 AND 240),
+  budget_weekly_inr numeric,
+  cooking_mode      public.cooking_mode,
+  cuisines          text[] DEFAULT '{}',
+  allergies         text[] DEFAULT '{}',
+  avoid             text[] DEFAULT '{}',
+  health_conditions text[] DEFAULT '{}',
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now()
 )
+-- Existence == "onboarding complete"
+-- RLS: read/insert/update own
+
+public.meals (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug           text UNIQUE NOT NULL,
+  name           text NOT NULL,
+  description    text,
+  meal_slot      public.meal_slot NOT NULL,
+  diet_type      public.diet_type NOT NULL,
+  cuisine        text,
+  image_url      text,
+  prep_time_min  int     NOT NULL CHECK (prep_time_min BETWEEN 0 AND 240),
+  calories_kcal  int     NOT NULL CHECK (calories_kcal >= 0),
+  protein_g      numeric NOT NULL,
+  carbs_g        numeric NOT NULL,
+  fat_g          numeric NOT NULL,
+  tags           text[]  NOT NULL DEFAULT '{}',
+  is_active      boolean NOT NULL DEFAULT true,
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
+)
+-- System-curated global catalog (no user_id)
+-- RLS: read-only for any authenticated user
+-- Writes: service-role only (Supabase Studio / admin SQL)
+-- Index: (meal_slot, diet_type) WHERE is_active
+
+public.user_meal_plans (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  meal_id     uuid NOT NULL REFERENCES public.meals(id) ON DELETE RESTRICT,
+  plan_date   date NOT NULL,
+  meal_slot   public.meal_slot NOT NULL,
+  servings    numeric NOT NULL DEFAULT 1 CHECK (servings > 0),
+  is_logged   boolean NOT NULL DEFAULT false,
+  logged_at   timestamptz,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, plan_date, meal_slot)
+)
+-- One row per user × date × slot — assigns a meal template to a slot
+-- RLS: full CRUD scoped to auth.uid() = user_id
+-- Index: (user_id, plan_date)
 ```
+
+### Triggers
+
+- `auth.users INSERT` → `public.handle_new_user()` → inserts `public.users` row (security definer)
+- `BEFORE UPDATE` on `users`, `meal_preferences`, `meals`, `user_meal_plans` → `public.set_updated_at()`
