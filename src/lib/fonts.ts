@@ -1,19 +1,14 @@
 /**
- * Pravah font loading — "Serene Flow" + onboarding "Warm Serif" edition.
+ * Pravah font loading — Newsreader (serif) + Manrope (sans).
  *
- * Newsreader (serif) + Manrope (sans) — main tab screens.
- * Cormorant Garamond (serif) + Jost (sans) — onboarding v2 screens.
+ * Used across ALL screens: main tab screens and onboarding v2.
+ * The onboarding design specifies "Pravah's existing tokens (Newsreader + Manrope)"
+ * so there is no separate font set for onboarding.
  *
  * Hook returns `loaded` so the root layout can hold the splash screen
  * until fonts are ready, preventing FOUT.
  */
 
-import {
-  CormorantGaramond_300Light,
-  CormorantGaramond_300Light_Italic,
-  CormorantGaramond_500Medium,
-} from '@expo-google-fonts/cormorant-garamond';
-import { Jost_300Light, Jost_400Regular, Jost_500Medium } from '@expo-google-fonts/jost';
 import {
   Manrope_200ExtraLight,
   Manrope_400Regular,
@@ -29,7 +24,6 @@ import { useFonts as useExpoFonts } from 'expo-font';
 
 export function usePravahFonts(): boolean {
   const [loaded] = useExpoFonts({
-    // Serene Flow (main app)
     Newsreader_400Regular,
     Newsreader_400Regular_Italic,
     Newsreader_600SemiBold,
@@ -37,13 +31,6 @@ export function usePravahFonts(): boolean {
     Manrope_400Regular,
     Manrope_600SemiBold,
     Manrope_700Bold,
-    // Warm Serif (onboarding v2)
-    CormorantGaramond_300Light,
-    CormorantGaramond_300Light_Italic,
-    CormorantGaramond_500Medium,
-    Jost_300Light,
-    Jost_400Regular,
-    Jost_500Medium,
   });
   return loaded;
 }
