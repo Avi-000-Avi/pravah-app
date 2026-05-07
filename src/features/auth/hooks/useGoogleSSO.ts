@@ -1,7 +1,18 @@
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+
+// Lazy-load expo-web-browser so the module doesn't crash when the native
+// module is absent (Expo Go). Google SSO requires a dev build; the hook
+// will surface a friendly error if called in an unsupported environment.
+import type * as ExpoWebBrowser from 'expo-web-browser';
+let WebBrowser: typeof ExpoWebBrowser | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  WebBrowser = require('expo-web-browser') as typeof ExpoWebBrowser;
+} catch {
+  // Native module unavailable — running in Expo Go or web.
+}
 
 /**
  * Google SSO via Supabase OAuth.
@@ -26,6 +37,10 @@ export function useGoogleSSO() {
     setError(null);
     try {
       const redirectTo = Linking.createURL('auth-callback');
+
+      if (!WebBrowser) {
+        throw new Error('Google sign-in requires a dev build — not available in Expo Go.');
+      }
 
       const { data, error: sbError } = await supabase.auth.signInWithOAuth({
         provider: 'google',

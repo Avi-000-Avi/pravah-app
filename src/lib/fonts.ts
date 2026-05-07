@@ -1,33 +1,36 @@
 /**
- * Pravah font loading.
+ * Pravah font loading — Newsreader (serif) + Manrope (sans).
  *
- * Loads the brand families used in the design system. Hook returns
- * `loaded` so the root layout can hold the splash screen until fonts
- * are ready (prevents the FOUT of system fonts swapping to brand).
+ * Used across ALL screens: main tab screens and onboarding v2.
+ * The onboarding design specifies "Pravah's existing tokens (Newsreader + Manrope)"
+ * so there is no separate font set for onboarding.
+ *
+ * Hook returns `loaded` so the root layout can hold the splash screen
+ * until fonts are ready, preventing FOUT.
  */
 
-import { useFonts as useExpoFonts } from 'expo-font';
-import { Syne_400Regular, Syne_700Bold } from '@expo-google-fonts/syne';
-import { Urbanist_600SemiBold, Urbanist_700Bold } from '@expo-google-fonts/urbanist';
 import {
-  OpenSans_400Regular,
-  OpenSans_600SemiBold,
-  OpenSans_700Bold,
-} from '@expo-google-fonts/open-sans';
-import { PlusJakartaSans_600SemiBold } from '@expo-google-fonts/plus-jakarta-sans';
-import { Inter_700Bold } from '@expo-google-fonts/inter';
+  Manrope_200ExtraLight,
+  Manrope_400Regular,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+} from '@expo-google-fonts/manrope';
+import {
+  Newsreader_400Regular,
+  Newsreader_400Regular_Italic,
+  Newsreader_600SemiBold,
+} from '@expo-google-fonts/newsreader';
+import { useFonts as useExpoFonts } from 'expo-font';
 
 export function usePravahFonts(): boolean {
   const [loaded] = useExpoFonts({
-    Syne_400Regular,
-    Syne_700Bold,
-    Urbanist_600SemiBold,
-    Urbanist_700Bold,
-    OpenSans_400Regular,
-    OpenSans_600SemiBold,
-    OpenSans_700Bold,
-    PlusJakartaSans_600SemiBold,
-    Inter_700Bold,
+    Newsreader_400Regular,
+    Newsreader_400Regular_Italic,
+    Newsreader_600SemiBold,
+    Manrope_200ExtraLight,
+    Manrope_400Regular,
+    Manrope_600SemiBold,
+    Manrope_700Bold,
   });
   return loaded;
 }

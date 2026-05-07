@@ -1,263 +1,563 @@
-import { Feather } from '@expo/vector-icons';
-import React, { useState } from 'react';
+/**
+ * Fuel / Meals screen — Pravah tab.
+ * Design ref: meals.jsx from Pravah.html design bundle.
+ * Interactive: log meal → fill animation → state update; swap alternatives; skip.
+ */
+import { MaterialIcons } from '@expo/vector-icons';
+import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Card } from '@/components/Card';
-import { Pill, type PillVariant } from '@/components/Pill';
-import { SectionTitle } from '@/components/SectionTitle';
-import { colors, fonts, radii, typography } from '@/lib/theme';
+import { useLogMeal, useMeals } from '@/features/meals';
+import type { Meal, MealSlot } from '@/features/meals';
+import { useAppStore } from '@/stores/appStore';
+import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
-interface Meal {
-  type: string;
-  name: string;
-  cal: string;
-  status: 'Log' | 'Prepped' | 'Prepare';
+type Phase = 'ready' | 'logging' | 'logged' | 'swapping';
+
+/**
+ * Slot → display label / time-of-day. The catalog stores meal_slot but
+ * not a wall-clock time; the time shown next to each card is a UI-level
+ * convention until per-user scheduling lands in user_meal_plans.
+ */
+const SLOT_ORDER: readonly MealSlot[] = ['breakfast', 'lunch', 'dinner', 'snack'] as const;
+const SLOT_LABEL: Record<MealSlot, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+};
+const SLOT_TIME: Record<MealSlot, string> = {
+  breakfast: '8:00 AM',
+  lunch: '1:00 PM',
+  snack: '4:00 PM',
+  dinner: '7:30 PM',
+};
+
+/** Display shape derived from the catalog Meal row. */
+interface MealCard {
+  /** UUID of the public.meals row — needed to write user_meal_plans. */
+  mealId: string;
+  /** Enum key used as part of the user_meal_plans unique constraint. */
+  slot: MealSlot;
+  name: string; // slot label, e.g. "Breakfast"
+  time: string;
+  items: string;
+  protein: number;
+  carbs: number;
+  fat: number;
+  cal: number;
 }
 
-const STATUS_TO_VARIANT: Record<Meal['status'], PillVariant> = {
-  Log: 'success',
-  Prepped: 'warning',
-  Prepare: 'error',
-};
+function toMealCard(meal: Meal): MealCard {
+  return {
+    mealId: meal.id,
+    slot: meal.meal_slot,
+    name: SLOT_LABEL[meal.meal_slot],
+    time: SLOT_TIME[meal.meal_slot],
+    items: meal.description ?? meal.name,
+    protein: meal.protein_g,
+    carbs: meal.carbs_g,
+    fat: meal.fat_g,
+    cal: meal.calories_kcal,
+  };
+}
 
-const WEEK = [
-  { day: 'Sun', date: 2 },
-  { day: 'Mon', date: 3 },
-  { day: 'Tue', date: 4 },
-  { day: 'Wed', date: 5 },
-  { day: 'Thu', date: 6 },
-  { day: 'Fri', date: 7 },
-  { day: 'Sat', date: 8 },
-];
+/**
+ * Pick one meal per slot, in canonical order, from the catalog rows.
+ * Until per-user plan generation lands, this acts as today's plan.
+ */
+function buildTodayPlan(meals: readonly Meal[]): MealCard[] {
+  const bySlot = new Map<MealSlot, Meal>();
+  for (const m of meals) {
+    if (!bySlot.has(m.meal_slot)) bySlot.set(m.meal_slot, m);
+  }
+  return SLOT_ORDER.flatMap((slot) => {
+    const m = bySlot.get(slot);
+    return m ? [toMealCard(m)] : [];
+  });
+}
 
-const MEAL_DATA: Record<number, Meal[]> = {
-  2: [
-    { type: 'Breakfast', name: 'Oatmeal', cal: '423 cal', status: 'Log' },
-    { type: 'Lunch', name: 'Veg Pulao', cal: '567 cal', status: 'Prepped' },
-    { type: 'Snack', name: 'Peanuts', cal: '280 cal', status: 'Prepare' },
-    { type: 'Dinner', name: 'Dal & Rice', cal: '520 cal', status: 'Prepare' },
-  ],
-  5: [
-    { type: 'Breakfast', name: 'Poha', cal: '380 cal', status: 'Log' },
-    { type: 'Lunch', name: 'Khichdi', cal: '490 cal', status: 'Log' },
-    { type: 'Snack', name: 'Fruit Bowl', cal: '180 cal', status: 'Prepped' },
-    { type: 'Dinner', name: 'Sabzi & Roti', cal: '560 cal', status: 'Prepare' },
-  ],
-};
-
-const GROCERIES = [
-  { name: 'Paneer', qty: '500gm', note: '4 meals of 25g protein' },
-  { name: 'Eggs', qty: '10pcs', note: '40g protein' },
-  { name: 'Lentils', qty: '1kg', note: '5 days/week' },
+// Smart-swap suggestions remain hardcoded for now. A follow-up will source
+// these from the same catalog (calorie-matched alternatives in the same slot).
+const SWAPS = [
+  { name: 'Tofu Stir Fry', protein: 36, cal: 490 },
+  { name: 'Egg Bhurji Bowl', protein: 42, cal: 510 },
+  { name: 'Greek Yogurt Bowl', protein: 34, cal: 460 },
 ];
 
 export default function MealsScreen() {
   const insets = useSafeAreaInsets();
-  const [selectedDate, setSelectedDate] = useState<number>(5);
-  const meals = MEAL_DATA[selectedDate] ?? MEAL_DATA[2] ?? [];
+  const { user, today, setMealLogged } = useAppStore();
+  const { data: catalog, isLoading, error, refetch } = useMeals();
+  const logMeal = useLogMeal();
+  const MEALS = useMemo<readonly MealCard[]>(() => buildTodayPlan(catalog ?? []), [catalog]);
+  const [activeMeal, setActiveMeal] = useState(today.meals.done);
+  const [phase, setPhase] = useState<Phase>('ready');
+  const [fillPct, setFillPct] = useState(0);
+  const [swapIdx, setSwapIdx] = useState<number | null>(null);
+  const allDone = MEALS.length > 0 && activeMeal >= MEALS.length;
+
+  const handleEat = () => {
+    const meal = MEALS[activeMeal];
+    if (!meal) return;
+
+    // Fire the DB write immediately — the animation runs in parallel.
+    // Errors are captured to Sentry inside the mutationFn; they don't
+    // block the local phase machine so UX stays smooth even on poor networks.
+    const today_date = new Date().toISOString().split('T')[0] ?? '';
+    logMeal.mutate({ mealId: meal.mealId, slot: meal.slot, date: today_date });
+
+    setPhase('logging');
+    setFillPct(0);
+    let p = 0;
+    const iv = setInterval(() => {
+      p += 5;
+      setFillPct(p);
+      if (p >= 100) {
+        clearInterval(iv);
+        setTimeout(() => {
+          setPhase('logged');
+          setMealLogged();
+          setTimeout(() => {
+            setActiveMeal((m) => m + 1);
+            setPhase('ready');
+            setFillPct(0);
+          }, 1200);
+        }, 200);
+      }
+    }, 18);
+  };
+
+  const doneMeals = MEALS.slice(0, activeMeal);
+  const totalCal = doneMeals.reduce((a, m) => a + m.cal, 0);
+  const totalProtein = doneMeals.reduce((a, m) => a + m.protein, 0);
+  const totalCarbs = doneMeals.reduce((a, m) => a + m.carbs, 0);
 
   return (
     <ScrollView
-      style={styles.screen}
-      contentContainerStyle={{
-        paddingTop: insets.top + 16,
-        paddingHorizontal: 20,
-        paddingBottom: 120,
-      }}
+      style={st.screen}
+      contentContainerStyle={{ paddingBottom: 120 }}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.screenTitle}>Meals</Text>
+      <View style={[st.topBar, { paddingTop: insets.top + 12 }]}>
+        <View style={st.topBarL}>
+          <View style={st.avatar}>
+            <Text style={st.avatarTxt}>{user.name.charAt(0).toUpperCase()}</Text>
+          </View>
+          <Text style={st.brand}>Pravah</Text>
+        </View>
+        <MaterialIcons name="notifications-none" size={22} color={colors.rose} />
+      </View>
 
-      {/* Week strip */}
-      <View style={styles.weekRow}>
-        {WEEK.map((d) => {
-          const active = d.date === selectedDate;
-          return (
-            <Pressable
-              key={d.date}
-              onPress={() => setSelectedDate(d.date)}
-              style={[styles.dayCell, active && styles.dayCellActive]}
-            >
-              <Text style={[styles.dayLabel, active && styles.dayLabelActive]}>{d.day}</Text>
-              <Text style={[styles.dayDate, active && styles.dayDateActive]}>{d.date}</Text>
+      <View style={st.content}>
+        <Text style={st.title}>
+          <Text style={st.titleI}>Your meals today</Text>
+        </Text>
+        <Text style={st.subtitle}>
+          {today.meals.done} of {today.meals.total} logged · {1440 - totalCal} kcal remaining
+        </Text>
+
+        {/* Macro summary */}
+        <View style={[st.macroCard, shadows.card]}>
+          {[
+            {
+              label: 'Calories',
+              val: String(totalCal),
+              unit: 'kcal',
+              pct: Math.min(100, (totalCal / 1440) * 100),
+              color: colors.rose,
+            },
+            {
+              label: 'Protein',
+              val: String(totalProtein),
+              unit: 'g',
+              pct: Math.min(100, (totalProtein / 90) * 100),
+              color: colors.mint,
+            },
+            {
+              label: 'Carbs',
+              val: String(totalCarbs),
+              unit: 'g',
+              pct: Math.min(100, (totalCarbs / 184) * 100),
+              color: colors.sky,
+            },
+          ].map((m, i) => (
+            <View key={m.label} style={[st.macroCell, i < 2 && st.macroDiv]}>
+              <Text style={st.macroVal}>{m.val}</Text>
+              <Text style={st.macroUnit}>
+                {m.unit} {m.label}
+              </Text>
+              <View style={st.barTrack}>
+                <View
+                  style={[
+                    st.barFill,
+                    { width: `${m.pct}%` as `${number}%`, backgroundColor: m.color },
+                  ]}
+                />
+              </View>
+            </View>
+          ))}
+        </View>
+
+        {/* Loading skeleton — 3 placeholder cards while the catalog query resolves. */}
+        {isLoading && (
+          <View style={st.skeletonGroup}>
+            {[0, 1, 2].map((i) => (
+              <View key={i} style={[st.mealCard, st.skeletonCard]}>
+                <View style={st.skeletonLineWide} />
+                <View style={st.skeletonLineNarrow} />
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Error fallback — surface the message with a retry. */}
+        {error && !isLoading && (
+          <View style={st.errorCard}>
+            <Text style={st.errorTitle}>Could not load meals</Text>
+            <Text style={st.errorBody}>{error.message}</Text>
+            <Pressable style={st.errorRetry} onPress={() => refetch()}>
+              <Text style={st.errorRetryTxt}>Try again</Text>
             </Pressable>
+          </View>
+        )}
+
+        {/* Empty catalog — defensive: schema is live but seed is missing. */}
+        {!isLoading && !error && MEALS.length === 0 && (
+          <View style={st.errorCard}>
+            <Text style={st.errorTitle}>No meals available</Text>
+            <Text style={st.errorBody}>
+              The meal catalog is empty. Run the local seed or contact an admin.
+            </Text>
+          </View>
+        )}
+
+        {/* Meal cards */}
+        {MEALS.map((meal, i) => {
+          const isDone = i < activeMeal;
+          const isCurrent = i === activeMeal && !allDone;
+          return (
+            <View
+              key={meal.name}
+              style={[
+                st.mealCard,
+                shadows.cardSubtle,
+                isCurrent && st.mealActive,
+                i > activeMeal && { opacity: 0.55 },
+              ]}
+            >
+              <View style={st.mealHead}>
+                <View style={st.mealHeadL}>
+                  <View
+                    style={[
+                      st.mealDot,
+                      {
+                        backgroundColor: isDone
+                          ? colors.mint
+                          : isCurrent
+                            ? colors.rose
+                            : colors.tonal,
+                      },
+                    ]}
+                  />
+                  <View>
+                    <Text style={st.mealName}>{meal.name}</Text>
+                    <Text style={st.mealTime}>{meal.time}</Text>
+                  </View>
+                </View>
+                <View
+                  style={[
+                    st.chip,
+                    {
+                      backgroundColor: isDone
+                        ? colors.mint
+                        : isCurrent
+                          ? `${colors.rose}33`
+                          : colors.tonal,
+                    },
+                  ]}
+                >
+                  <Text style={st.chipTxt}>
+                    {isDone ? 'Logged ✓' : isCurrent ? 'Up next' : 'Scheduled'}
+                  </Text>
+                </View>
+              </View>
+
+              {isCurrent && (
+                <View style={st.mealBody}>
+                  <Text style={st.mealItems}>{meal.items}</Text>
+                  <View style={st.chips4}>
+                    {[
+                      { l: 'Protein', v: `${meal.protein}g`, bg: colors.mint },
+                      { l: 'Carbs', v: `${meal.carbs}g`, bg: colors.sky },
+                      { l: 'Fat', v: `${meal.fat}g`, bg: colors.lavender },
+                      { l: 'Cal', v: String(meal.cal), bg: colors.tonal },
+                    ].map((mc) => (
+                      <View key={mc.l} style={[st.chip4, { backgroundColor: mc.bg }]}>
+                        <Text style={st.chip4Val}>{mc.v}</Text>
+                        <Text style={st.chip4Lbl}>{mc.l}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {phase === 'logging' && (
+                    <View style={st.fillWrap}>
+                      <View style={st.fillTrack}>
+                        <View style={[st.fillBar, { width: `${fillPct}%` as `${number}%` }]} />
+                      </View>
+                      <Text style={st.fillLbl}>Logging…</Text>
+                    </View>
+                  )}
+                  {phase === 'logged' && (
+                    <View style={st.loggedRow}>
+                      <Text style={st.loggedEmoji}>✅</Text>
+                      <Text style={st.loggedTxt}>Logged! +8% progress</Text>
+                    </View>
+                  )}
+                  {phase === 'swapping' && (
+                    <View style={st.swapList}>
+                      <Text style={st.swapLbl}>Smart swaps</Text>
+                      {SWAPS.map((sw, si) => (
+                        <Pressable
+                          key={si}
+                          style={[st.swapRow, swapIdx === si && { backgroundColor: colors.mint }]}
+                          onPress={() => {
+                            setSwapIdx(si);
+                            setPhase('ready');
+                          }}
+                        >
+                          <Text style={st.swapName}>{sw.name}</Text>
+                          <Text style={st.swapMeta}>
+                            {sw.protein}g P · {sw.cal} cal
+                          </Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  )}
+                  {(phase === 'ready' || phase === 'swapping') && (
+                    <View style={st.ctaRow}>
+                      <Pressable style={[st.ctaPrimary, { flex: 2 }]} onPress={handleEat}>
+                        <Text style={st.ctaPrimaryTxt}>✓ Ate This</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[st.ctaGhost, { flex: 1 }]}
+                        onPress={() => setPhase((p) => (p === 'swapping' ? 'ready' : 'swapping'))}
+                      >
+                        <Text style={st.ctaGhostTxt}>Swap</Text>
+                      </Pressable>
+                      <Pressable
+                        style={[st.ctaOutline, { flex: 1 }]}
+                        onPress={() => setActiveMeal((m) => m + 1)}
+                      >
+                        <Text style={st.ctaOutlineTxt}>Skip</Text>
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              )}
+              {isDone && (
+                <View style={st.doneSub}>
+                  <Text style={st.doneSubTxt}>{meal.items}</Text>
+                </View>
+              )}
+            </View>
           );
         })}
-      </View>
 
-      {/* Plan banner */}
-      <View style={styles.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>Weight loss · 1800 cals/day</Text>
-          <Text style={styles.bannerMeta}>AI-generated plan · Oct 6–12</Text>
-        </View>
-        <Pressable style={styles.bannerBtn}>
-          <Feather name="refresh-cw" size={11} color={colors.white} />
-          <Text style={styles.bannerBtnText}>Regenerate</Text>
-        </Pressable>
-      </View>
-
-      {/* Meal grid */}
-      <View style={styles.grid}>
-        {meals.map((m) => (
-          <Card key={m.type} style={styles.gridCard}>
-            <Text style={styles.mealType}>{m.type}</Text>
-            <Text style={styles.mealName}>{m.name}</Text>
-            <Text style={styles.mealCal}>{m.cal}</Text>
-            <Pill label={m.status} variant={STATUS_TO_VARIANT[m.status]} block />
-          </Card>
-        ))}
-      </View>
-
-      {/* Groceries */}
-      <SectionTitle>Groceries</SectionTitle>
-      <Card style={styles.listCard}>
-        {GROCERIES.map((item, i) => (
-          <View
-            key={item.name}
-            style={[styles.gItem, i < GROCERIES.length - 1 && styles.gItemDivider]}
-          >
-            <View style={styles.gItemHead}>
-              <Text style={styles.gItemName}>{item.name}</Text>
-              <Text style={styles.gItemQty}>{item.qty}</Text>
-            </View>
-            <Text style={styles.gItemNote}>{item.note}</Text>
+        {allDone && (
+          <View style={[st.allDone, { backgroundColor: colors.mint }]}>
+            <Text style={{ fontSize: 36 }}>🎉</Text>
+            <Text style={st.allDoneTitle}>All meals logged!</Text>
+            <Text style={st.allDoneSub}>You hit your nutrition targets today.</Text>
           </View>
-        ))}
-      </Card>
+        )}
+      </View>
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
+const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  screenTitle: {
-    fontFamily: fonts.display,
-    fontSize: typography.size['2xl'],
-    color: colors.text.primary,
-    textAlign: 'center',
-    marginBottom: 20,
-    letterSpacing: typography.size['2xl'] * typography.tracking.display,
-  },
-  weekRow: {
+  topBar: {
     flexDirection: 'row',
-    gap: 4,
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  dayCell: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: radii.md,
-    gap: 4,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.gutter,
+    paddingBottom: 12,
+    backgroundColor: colors.tonal,
   },
-  dayCellActive: { backgroundColor: colors.text.primary },
-  dayLabel: {
-    fontFamily: fonts.display,
-    fontSize: typography.size.xs,
-    color: 'rgba(28,23,23,0.5)',
-    letterSpacing: 0.2,
+  topBarL: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.rose,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dayLabelActive: { color: 'rgba(255,255,255,0.7)' },
-  dayDate: {
-    fontFamily: fonts.ui,
+  avatarTxt: { fontFamily: fonts.bodyBold, fontSize: 14, color: '#fff' },
+  brand: {
+    fontFamily: fonts.displayItalic,
     fontSize: typography.size.lg,
     color: colors.text.primary,
   },
-  dayDateActive: { color: colors.white },
-
-  banner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.text.primary,
+  content: { padding: spacing.gutter, gap: 14 },
+  title: { fontFamily: fonts.display, fontSize: 26, color: colors.text.primary },
+  titleI: { fontFamily: fonts.displayItalic, fontSize: 26 },
+  subtitle: { fontFamily: fonts.body, fontSize: typography.size.sm, color: colors.text.secondary },
+  macroCard: {
+    backgroundColor: colors.surface,
     borderRadius: radii.card,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    marginBottom: 20,
-    gap: 12,
+    padding: 18,
+    flexDirection: 'row',
   },
-  bannerTitle: {
-    fontFamily: fonts.display,
-    fontSize: typography.size.base,
-    color: colors.white,
-    marginBottom: 3,
+  macroCell: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  macroDiv: { borderRightWidth: 1, borderRightColor: colors.outlineVariant },
+  macroVal: {
+    fontFamily: fonts.statsThin,
+    fontSize: 26,
+    color: colors.text.primary,
+    lineHeight: 26,
   },
-  bannerMeta: {
+  macroUnit: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
+    fontSize: 10,
+    color: colors.text.secondary,
+    marginBottom: 6,
   },
-  bannerBtn: {
+  barTrack: {
+    height: 3,
+    width: '100%',
+    borderRadius: 2,
+    backgroundColor: colors.tonal,
+    overflow: 'hidden',
+  },
+  barFill: { height: '100%', borderRadius: 2 },
+  mealCard: { backgroundColor: colors.surface, borderRadius: radii.card, overflow: 'hidden' },
+  mealActive: { borderWidth: 2, borderColor: colors.rose },
+  mealHead: {
+    padding: 18,
+    paddingBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderWidth: 1,
-    borderRadius: radii.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    justifyContent: 'space-between',
   },
-  bannerBtnText: {
-    fontFamily: fonts.uiSemi,
-    fontSize: 11,
-    color: colors.white,
-  },
-
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 24,
-  },
-  gridCard: {
-    flexBasis: '48.5%',
-    flexGrow: 1,
-    padding: 14,
-  },
-  mealType: {
-    fontFamily: fonts.label,
-    fontSize: typography.size.xs,
-    color: colors.text.muted,
+  mealHeadL: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  mealDot: { width: 10, height: 10, borderRadius: 5 },
+  mealName: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.text.primary },
+  mealTime: { fontFamily: fonts.body, fontSize: 11, color: colors.text.secondary },
+  chip: { borderRadius: radii.pill, paddingHorizontal: 10, paddingVertical: 4 },
+  chipTxt: { fontFamily: fonts.label, fontSize: typography.size.xs, color: colors.eggplant },
+  mealBody: { padding: 18, paddingTop: 12, gap: 10 },
+  mealItems: { fontFamily: fonts.body, fontSize: 14, color: colors.text.primary },
+  chips4: { flexDirection: 'row', gap: 10 },
+  chip4: { flex: 1, borderRadius: 10, paddingVertical: 7, alignItems: 'center' },
+  chip4Val: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.eggplant },
+  chip4Lbl: {
+    fontFamily: fonts.body,
+    fontSize: 9,
+    color: `${colors.eggplant}88`,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
-    marginBottom: 2,
   },
-  mealName: {
-    fontFamily: fonts.display,
-    fontSize: 15,
-    color: colors.text.primary,
-    marginBottom: 2,
-  },
-  mealCal: {
+  fillWrap: { gap: 6 },
+  fillTrack: { height: 6, borderRadius: 3, backgroundColor: colors.tonal, overflow: 'hidden' },
+  fillBar: { height: '100%', backgroundColor: colors.mint, borderRadius: 3 },
+  fillLbl: {
     fontFamily: fonts.body,
     fontSize: 11,
-    color: colors.text.muted,
-    marginBottom: 10,
+    color: colors.text.secondary,
+    textAlign: 'center',
   },
-
-  listCard: { overflow: 'hidden', marginBottom: 8 },
-  gItem: { paddingHorizontal: 16, paddingVertical: 12 },
-  gItemDivider: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray[200],
+  loggedRow: { alignItems: 'center', paddingVertical: 8 },
+  loggedEmoji: { fontSize: 32 },
+  loggedTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.mint },
+  swapList: { gap: 8 },
+  swapLbl: {
+    fontFamily: fonts.label,
+    fontSize: 12,
+    color: colors.text.secondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  gItemHead: { flexDirection: 'row', justifyContent: 'space-between' },
-  gItemName: {
+  swapRow: {
+    backgroundColor: colors.surfaceLow,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  swapName: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.text.primary },
+  swapMeta: { fontFamily: fonts.body, fontSize: 11, color: colors.text.secondary },
+  ctaRow: { flexDirection: 'row', gap: 8 },
+  ctaPrimary: {
+    backgroundColor: colors.rose,
+    borderRadius: radii.pill,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ctaPrimaryTxt: {
     fontFamily: fonts.bodyBold,
-    fontSize: typography.size.base,
-    color: colors.text.primary,
+    fontSize: 12,
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  gItemQty: {
-    fontFamily: fonts.bodySemi,
-    fontSize: typography.size.sm,
-    color: colors.text.muted,
+  ctaGhost: {
+    backgroundColor: colors.tonal,
+    borderRadius: radii.pill,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  gItemNote: {
+  ctaGhostTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.warmBrown },
+  ctaOutline: {
+    borderRadius: radii.pill,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.outlineVariant,
+  },
+  ctaOutlineTxt: { fontFamily: fonts.bodySemi, fontSize: 12, color: colors.warmBrown },
+  doneSub: { paddingHorizontal: 18, paddingBottom: 14, paddingTop: 8 },
+  doneSubTxt: { fontFamily: fonts.body, fontSize: 12, color: colors.text.secondary },
+  allDone: { borderRadius: radii.card, padding: 20, alignItems: 'center', gap: 8 },
+  allDoneTitle: { fontFamily: fonts.display, fontSize: 22, color: colors.eggplant },
+  allDoneSub: { fontFamily: fonts.body, fontSize: 13, color: `${colors.eggplant}aa` },
+  skeletonGroup: { gap: 14 },
+  skeletonCard: { padding: 18, gap: 10 },
+  skeletonLineWide: { height: 14, width: '60%', borderRadius: 4, backgroundColor: colors.tonal },
+  skeletonLineNarrow: { height: 10, width: '35%', borderRadius: 4, backgroundColor: colors.tonal },
+  errorCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.card,
+    padding: 18,
+    gap: 8,
+    alignItems: 'center',
+  },
+  errorTitle: { fontFamily: fonts.bodySemi, fontSize: 14, color: colors.text.primary },
+  errorBody: {
     fontFamily: fonts.body,
-    fontSize: 11,
-    color: colors.gray[400],
-    marginTop: 2,
+    fontSize: 12,
+    color: colors.text.secondary,
+    textAlign: 'center',
+  },
+  errorRetry: {
+    marginTop: 6,
+    backgroundColor: colors.rose,
+    borderRadius: radii.pill,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  errorRetryTxt: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
 });
