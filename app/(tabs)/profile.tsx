@@ -6,10 +6,12 @@
  * activity heatmap, insight quote, muscle volume bars.
  */
 import { MaterialIcons } from '@expo/vector-icons';
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
@@ -34,6 +36,12 @@ const MUSCLES = [
 export default function DataScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAppStore();
+  const clearAuth = useAuthStore((s) => s.clearAuth);
+
+  const handleReplayOnboarding = useCallback(async () => {
+    clearAuth();
+    await supabase.auth.signOut();
+  }, [clearAuth]);
 
   const weekStats = [
     { label: 'Workouts', val: '5', prev: '4', unit: '' },
@@ -179,6 +187,17 @@ export default function DataScreen() {
             </View>
           ))}
         </View>
+
+        {/* Return to onboarding */}
+        <Pressable
+          style={st.replayBtn}
+          onPress={() => {
+            void handleReplayOnboarding();
+          }}
+        >
+          <MaterialIcons name="refresh" size={14} color={colors.text.muted} />
+          <Text style={st.replayBtnTxt}>Return to onboarding</Text>
+        </Pressable>
       </View>
     </ScrollView>
   );
@@ -391,5 +410,25 @@ const st = StyleSheet.create({
     color: colors.text.primary,
     width: 32,
     textAlign: 'right',
+  },
+
+  // Return to onboarding
+  replayBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    alignSelf: 'center',
+  },
+  replayBtnTxt: {
+    fontFamily: fonts.body,
+    fontSize: typography.size.xs,
+    color: colors.text.muted,
   },
 });
