@@ -6,3 +6,4 @@ node_modules
 dist
 ios
 android
+expo-env.d.ts
