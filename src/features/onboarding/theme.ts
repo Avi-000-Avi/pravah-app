@@ -1,8 +1,8 @@
 /**
  * Onboarding v2 design tokens — "Warm Serif" palette.
  *
- * Separate from the main Serene Flow theme used in the tab screens.
- * Uses Cormorant Garamond (serif) + Jost (sans) per the HTML prototype.
+ * Matches the onboarding.jsx reference design which uses Pravah's existing
+ * Newsreader (serif) + Manrope (sans) — same fonts as the main tab screens.
  */
 
 export const ob = {
@@ -25,11 +25,11 @@ export const ob = {
   border: 'rgba(30,26,24,0.10)',
   border2: 'rgba(30,26,24,0.06)',
 
-  // Fonts (loaded via usePravahFonts)
-  serif: 'CormorantGaramond_300Light',
-  serifItalic: 'CormorantGaramond_300Light_Italic',
-  serifMedium: 'CormorantGaramond_500Medium',
-  sans: 'Jost_300Light',
-  sansRegular: 'Jost_400Regular',
-  sansMedium: 'Jost_500Medium',
+  // Fonts (loaded via usePravahFonts — Newsreader + Manrope)
+  serif: 'Newsreader_400Regular',
+  serifItalic: 'Newsreader_400Regular_Italic',
+  serifMedium: 'Newsreader_600SemiBold',
+  sans: 'Manrope_400Regular',
+  sansRegular: 'Manrope_400Regular',
+  sansMedium: 'Manrope_600SemiBold',
 } as const;

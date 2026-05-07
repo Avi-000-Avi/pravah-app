@@ -14,6 +14,7 @@ const TABS: { name: string; label: string; icon: MaterialIconName }[] = [
   { name: 'workout', label: 'Flow', icon: 'fitness-center' },
   { name: 'chat', label: 'Rest', icon: 'self-improvement' },
   { name: 'profile', label: 'Data', icon: 'analytics' },
+  { name: 'grocery', label: 'Grocery', icon: 'shopping-cart' },
 ];
 
 /**
@@ -43,8 +44,6 @@ export default function TabsLayout() {
           }}
         />
       ))}
-      {/* Hidden routes — accessible via router.push but no tab bar entry */}
-      <Tabs.Screen name="grocery" options={{ href: null }} />
     </Tabs>
   );
 }
