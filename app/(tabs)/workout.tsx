@@ -7,7 +7,8 @@
  */
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCompleteWorkout, useTodayWorkout } from '@/features/workouts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
 import { useAppStore } from '@/stores/appStore';
@@ -15,72 +16,30 @@ import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme'
 
 type Phase = 'overview' | 'active' | 'rest' | 'done';
 
-const WORKOUT = {
-  name: 'Upper Body Strength',
-  duration: '45 min',
-  exercises: [
-    {
-      name: 'Bench Press',
-      sets: 3,
-      reps: '8–10',
-      weight: '60kg',
-      prevWeight: '58kg',
-      muscle: 'Chest',
-    },
-    {
-      name: 'Overhead Press',
-      sets: 3,
-      reps: '8–10',
-      weight: '40kg',
-      prevWeight: '38kg',
-      muscle: 'Shoulders',
-    },
-    {
-      name: 'Bent Over Row',
-      sets: 3,
-      reps: '10–12',
-      weight: '55kg',
-      prevWeight: '55kg',
-      muscle: 'Back',
-    },
-    {
-      name: 'Tricep Dips',
-      sets: 3,
-      reps: '12–15',
-      weight: 'Body',
-      prevWeight: 'Body',
-      muscle: 'Triceps',
-    },
-    {
-      name: 'Bicep Curl',
-      sets: 3,
-      reps: '12',
-      weight: '15kg',
-      prevWeight: '14kg',
-      muscle: 'Biceps',
-    },
-  ],
-};
-
 const fmt = (s: number) =>
   `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
 export default function WorkoutScreen() {
   const insets = useSafeAreaInsets();
   const { user, today, setWorkoutDone } = useAppStore();
+  const workoutQuery = useTodayWorkout(today.workout.name);
+  const completeWorkout = useCompleteWorkout();
   const [phase, setPhase] = useState<Phase>('overview');
   const [exIdx, setExIdx] = useState(0);
   const [setNum, setSetNum] = useState(1);
   const [restSec, setRestSec] = useState(60);
+  const [restTotalSec, setRestTotalSec] = useState(60);
   const [restActive, setRestActive] = useState(false);
   const [completedSets, setCompletedSets] = useState<Record<string, number>>({});
   const [elapsed, setElapsed] = useState(0);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const ex = WORKOUT.exercises[exIdx]!;
-  const totalSets = WORKOUT.exercises.reduce((a, e) => a + e.sets, 0);
+  const workout = workoutQuery.todayWorkout.workout;
+  const exercises = workout?.exercises ?? [];
+  const ex = exercises[exIdx] ?? null;
+  const totalSets = exercises.reduce((count, exercise) => count + exercise.sets, 0);
   const doneSets = Object.values(completedSets).reduce((a, b) => a + b, 0);
-  const pct = Math.round((doneSets / totalSets) * 100);
+  const pct = totalSets === 0 ? 0 : Math.round((doneSets / totalSets) * 100);
 
   useEffect(() => {
     if (phase === 'active') {
@@ -99,33 +58,106 @@ export default function WorkoutScreen() {
           clearInterval(iv);
           setRestActive(false);
           setPhase('active');
-          return 60;
+          return restTotalSec;
         }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(iv);
-  }, [restActive]);
+  }, [restActive, restTotalSec]);
 
-  const doneSet = () => {
+  useEffect(() => {
+    setExIdx(0);
+    setSetNum(1);
+    setRestSec(60);
+    setRestTotalSec(60);
+    setRestActive(false);
+    setCompletedSets({});
+    setElapsed(0);
+    setCompletionError(null);
+    setPhase(workoutQuery.todayWorkout.status === 'completed' ? 'done' : 'overview');
+  }, [workout?.id, workoutQuery.todayWorkout.status]);
+
+  const startRest = (durationSec: number) => {
+    setRestTotalSec(durationSec);
+    setRestSec(durationSec);
+    setRestActive(true);
+    setPhase('rest');
+  };
+
+  const doneSet = async () => {
+    if (!workout || !ex) {
+      return;
+    }
+
     const key = `${exIdx}-${setNum}`;
-    setCompletedSets((c) => ({ ...c, [key]: 1 }));
+    const previousCompletedSets = completedSets;
+    const nextCompletedSets = { ...previousCompletedSets, [key]: 1 };
+    setCompletionError(null);
+    setCompletedSets(nextCompletedSets);
+
     if (setNum < ex.sets) {
       setSetNum((n) => n + 1);
-      setRestSec(60);
-      setRestActive(true);
-      setPhase('rest');
-    } else if (exIdx < WORKOUT.exercises.length - 1) {
+      startRest(ex.rest_after_set_sec);
+      return;
+    }
+
+    if (exIdx < exercises.length - 1) {
       setExIdx((i) => i + 1);
       setSetNum(1);
-      setRestSec(90);
-      setRestActive(true);
-      setPhase('rest');
-    } else {
-      setPhase('done');
+      startRest(ex.rest_after_exercise_sec);
+      return;
+    }
+
+    try {
+      await completeWorkout.mutateAsync({
+        workoutId: workout.id,
+        date: workoutQuery.date,
+        durationSec: elapsed,
+        completedSets: Object.keys(nextCompletedSets).length,
+      });
       setWorkoutDone();
+      setPhase('done');
+    } catch (error) {
+      setCompletedSets(previousCompletedSets);
+      setCompletionError(
+        error instanceof Error ? error.message : 'Unable to save this workout right now.',
+      );
     }
   };
+
+  if (workoutQuery.isLoading) {
+    return (
+      <View style={[st.screen, st.centered, st.stateScreen]}>
+        <ActivityIndicator size="small" color={colors.rose} />
+        <Text style={st.stateTitle}>Loading today&apos;s workout</Text>
+        <Text style={st.stateBody}>Pulling in your current plan and exercise flow.</Text>
+      </View>
+    );
+  }
+
+  if (workoutQuery.error) {
+    return (
+      <View style={[st.screen, st.centered, st.stateScreen]}>
+        <Text style={st.stateTitle}>Couldn&apos;t load today&apos;s workout</Text>
+        <Text style={st.stateBody}>{workoutQuery.error}</Text>
+        <Pressable style={st.startBtn} onPress={() => void workoutQuery.refetch()}>
+          <Text style={st.startBtnTxt}>Try Again</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (!workout || exercises.length === 0 || !ex) {
+    return (
+      <View style={[st.screen, st.centered, st.stateScreen]}>
+        <Text style={st.stateTitle}>No workout planned yet</Text>
+        <Text style={st.stateBody}>
+          We&apos;ll show your flow here as soon as today&apos;s plan is ready.
+        </Text>
+      </View>
+    );
+  }
 
   // ── Overview ─────────────────────────────────────────────────────────────
   if (phase === 'overview')
@@ -157,13 +189,13 @@ export default function WorkoutScreen() {
           <View style={[st.heroCard, shadows.card]}>
             <View style={st.heroDecor} />
             <Text style={st.overline}>Ready to train</Text>
-            <Text style={st.heroTitle}>{WORKOUT.name}</Text>
+            <Text style={st.heroTitle}>{workout.name}</Text>
             <View style={st.heroChips}>
               <View style={[st.chip, { backgroundColor: colors.mint }]}>
-                <Text style={st.chipTxt}>⏱ {WORKOUT.duration}</Text>
+                <Text style={st.chipTxt}>⏱ {workout.duration_min} min</Text>
               </View>
               <View style={[st.chip, { backgroundColor: colors.lavender }]}>
-                <Text style={st.chipTxt}>{WORKOUT.exercises.length} exercises</Text>
+                <Text style={st.chipTxt}>{exercises.length} exercises</Text>
               </View>
               <View style={[st.chip, { backgroundColor: colors.sky }]}>
                 <Text style={st.chipTxt}>{totalSets} sets</Text>
@@ -176,18 +208,20 @@ export default function WorkoutScreen() {
 
           <Text style={st.sectionHead}>Exercises</Text>
           <View style={st.exList}>
-            {WORKOUT.exercises.map((e, i) => (
-              <View key={i} style={[st.exRow, shadows.cardSubtle]}>
+            {exercises.map((exercise) => (
+              <View key={exercise.id} style={[st.exRow, shadows.cardSubtle]}>
                 <View style={[st.exIcon, { backgroundColor: `${colors.mint}55` }]}>
                   <MaterialIcons name="fitness-center" size={18} color={colors.eggplant} />
                 </View>
                 <View style={st.exTxt}>
-                  <Text style={st.exName}>{e.name}</Text>
+                  <Text style={st.exName}>{exercise.name}</Text>
                   <Text style={st.exMeta}>
-                    {e.sets} sets · {e.reps} reps · {e.weight}
+                    {exercise.sets} sets · {exercise.reps} reps · {exercise.target_weight}
                   </Text>
                 </View>
-                {e.weight !== e.prevWeight && <Text style={st.pr}>↑ PR</Text>}
+                {exercise.target_weight !== exercise.previous_weight && (
+                  <Text style={st.pr}>↑ PR</Text>
+                )}
               </View>
             ))}
           </View>
@@ -209,16 +243,17 @@ export default function WorkoutScreen() {
     return (
       <View style={[st.screen, st.centered]}>
         <Text style={st.restLabel}>Rest</Text>
-        <ProgressRing size={160} strokeWidth={6} percent={(restSec / 90) * 100} color={colors.sky}>
+        <ProgressRing
+          size={160}
+          strokeWidth={6}
+          percent={(restSec / restTotalSec) * 100}
+          color={colors.sky}
+        >
           <Text style={st.restTime}>{fmt(restSec)}</Text>
         </ProgressRing>
-        <Text style={st.restNextTitle}>
-          {setNum < ex.sets
-            ? `Next: Set ${setNum + 1} of ${ex.sets}`
-            : `Next: ${WORKOUT.exercises[Math.min(exIdx + 1, WORKOUT.exercises.length - 1)]?.name ?? 'Done'}`}
-        </Text>
+        <Text style={st.restNextTitle}>{`Next: Set ${setNum} of ${ex.sets}`}</Text>
         <Text style={st.restNextSub}>
-          {ex.name} · {ex.weight}
+          {ex.name} · {ex.target_weight}
         </Text>
         <Pressable
           style={[st.startBtn, { marginTop: 32 }]}
@@ -239,7 +274,8 @@ export default function WorkoutScreen() {
         <Text style={{ fontSize: 64, marginBottom: 16 }}>🏆</Text>
         <Text style={st.doneTitle}>Workout complete!</Text>
         <Text style={st.doneSub}>
-          {fmt(elapsed)} · {totalSets} sets · You're consistent.
+          {workout.name} · {fmt(workoutQuery.todayWorkout.plan?.duration_sec ?? elapsed)} ·{' '}
+          {totalSets} sets
         </Text>
         <View style={st.doneChips}>
           <View style={[st.chip, { backgroundColor: colors.mint }]}>
@@ -277,7 +313,7 @@ export default function WorkoutScreen() {
       <View style={[st.activeHeader, { paddingTop: insets.top + 12 }]}>
         <View style={st.activeHeaderTop}>
           <Text style={st.overline}>
-            Exercise {exIdx + 1} / {WORKOUT.exercises.length}
+            Exercise {exIdx + 1} / {exercises.length}
           </Text>
           <Text style={st.overline}>{fmt(elapsed)}</Text>
         </View>
@@ -290,11 +326,11 @@ export default function WorkoutScreen() {
             <Text style={st.chipTxt}>{ex.muscle}</Text>
           </View>
           <View style={[st.chip, { backgroundColor: colors.mint }]}>
-            <Text style={st.chipTxt}>{ex.weight}</Text>
+            <Text style={st.chipTxt}>{ex.target_weight}</Text>
           </View>
-          {ex.weight !== ex.prevWeight && (
+          {ex.target_weight !== ex.previous_weight && (
             <View style={[st.chip, { backgroundColor: colors.sky }]}>
-              <Text style={st.chipTxt}>↑ vs {ex.prevWeight}</Text>
+              <Text style={st.chipTxt}>↑ vs {ex.previous_weight}</Text>
             </View>
           )}
         </View>
@@ -339,7 +375,7 @@ export default function WorkoutScreen() {
           </Text>
           <View style={st.setStats}>
             <View style={[st.setStat, { backgroundColor: colors.tonal }]}>
-              <Text style={st.setStatVal}>{ex.weight}</Text>
+              <Text style={st.setStatVal}>{ex.target_weight}</Text>
               <Text style={st.setStatLbl}>Weight</Text>
             </View>
             <View style={[st.setStat, { backgroundColor: colors.tonal }]}>
@@ -347,17 +383,28 @@ export default function WorkoutScreen() {
               <Text style={st.setStatLbl}>Target reps</Text>
             </View>
           </View>
-          <Pressable style={st.doneSetBtn} onPress={doneSet}>
+          <Pressable
+            style={[st.doneSetBtn, completeWorkout.isPending && st.disabledButton]}
+            onPress={() => void doneSet()}
+            disabled={completeWorkout.isPending}
+          >
             <Text style={st.doneSetBtnTxt}>✓ Done Set {setNum}</Text>
           </Pressable>
         </View>
+
+        {completionError ? (
+          <View style={[st.alertCard, { backgroundColor: `${colors.rose}1a` }]}>
+            <Text style={st.alertTitle}>Workout progress wasn&apos;t saved</Text>
+            <Text style={st.alertBody}>{completionError}</Text>
+          </View>
+        ) : null}
 
         {/* Quote */}
         <View style={[st.quoteCard, { backgroundColor: colors.lavender }]}>
           <Text style={st.quoteTxt}>
             "
-            {ex.prevWeight !== ex.weight
-              ? `You lifted ${ex.prevWeight} last time. Today you do ${ex.weight}. That's what progress looks like.`
+            {ex.previous_weight !== ex.target_weight
+              ? `You lifted ${ex.previous_weight} last time. Today you do ${ex.target_weight}. That's what progress looks like.`
               : 'Consistency is the foundation of mastery. Show up again today.'}
             "
           </Text>
@@ -370,6 +417,7 @@ export default function WorkoutScreen() {
 const st = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   centered: { alignItems: 'center', justifyContent: 'center' },
+  stateScreen: { paddingHorizontal: spacing.gutter, gap: 12 },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -445,6 +493,7 @@ const st = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
+  disabledButton: { opacity: 0.7 },
   exList: { gap: 8 },
   exRow: {
     backgroundColor: colors.surface,
@@ -468,6 +517,19 @@ const st = StyleSheet.create({
   alertCard: { borderRadius: radii.card, padding: 18, gap: 8 },
   alertTitle: { fontFamily: fonts.bodyBold, fontSize: 13, color: colors.eggplant },
   alertBody: { fontFamily: fonts.body, fontSize: 12, color: colors.text.secondary, lineHeight: 18 },
+  stateTitle: {
+    fontFamily: fonts.display,
+    fontSize: typography.size.xl,
+    color: colors.text.primary,
+    textAlign: 'center',
+  },
+  stateBody: {
+    fontFamily: fonts.body,
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    lineHeight: typography.size.sm * 1.5,
+  },
   restLabel: {
     fontFamily: fonts.label,
     fontSize: 13,

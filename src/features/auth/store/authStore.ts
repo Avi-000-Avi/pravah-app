@@ -44,7 +44,7 @@ export const useAuthStore = create<AuthState>()(
       setSession: (session) => set({ session }),
       setOnboarded: (val) => set({ isOnboarded: val }),
       setLoading: (val) => set({ isLoading: val }),
-      clearAuth: () => set({ session: null, isOnboarded: false }),
+      clearAuth: () => set({ session: null, isOnboarded: false, isLoading: false }),
     }),
     {
       name: 'auth-store',

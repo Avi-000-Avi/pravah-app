@@ -1,171 +1,112 @@
 import { router } from 'expo-router';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { OBShell } from '@/components/onboarding/OBShell';
-import { useOBStore } from '@/features/onboarding/store';
-import { ob } from '@/features/onboarding/theme';
-import type { OBSex } from '@/features/onboarding/store';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { GOAL_OPTIONS, OnboardingShell, useOnboardingStore } from '@/features/onboarding';
+import { fonts, onboarding } from '@/lib/theme';
 
-const SEX_OPTIONS: OBSex[] = ['Male', 'Female', 'Prefer not to say'];
-
-export default function Step2Body() {
-  const { age, height, weight, sex, setField } = useOBStore();
-
-  const canContinue = age.length > 0 && height.length > 0 && weight.length > 0 && sex !== null;
+export default function Step2Goal() {
+  const goal = useOnboardingStore((state) => state.goal);
+  const setField = useOnboardingStore((state) => state.setField);
 
   return (
-    <OBShell
+    <OnboardingShell
       step={2}
-      stepLabel="Step 02 / Baseline"
-      titleLine1="Your body,"
-      titleLine2="calibrated."
-      desc="Used only to calculate targets. Never shared, never sold."
+      stepLabel="Step 02 / Goal"
+      titleLine1="What should"
+      titleLine2="Pravah optimise?"
+      desc="One goal shapes your calories, meal pacing, and the nudges you see every day."
       navActionLabel="Back"
       onNavAction={() => router.back()}
       ctaLabel="Continue"
-      ctaDisabled={!canContinue}
+      ctaDisabled={goal === null}
       onCta={() => router.push('/(onboarding)/step-3')}
     >
-      {/* Input fields */}
-      <View style={styles.fieldCard}>
-        <View style={[styles.fieldRow, styles.fieldRowBorder]}>
-          <Text style={styles.fieldLbl}>Age</Text>
-          <TextInput
-            style={styles.fieldInp}
-            value={age}
-            onChangeText={(v) => setField('age', v)}
-            placeholder="28"
-            placeholderTextColor={ob.ink3 + '80'}
-            keyboardType="number-pad"
-            returnKeyType="next"
-          />
-          <Text style={styles.fieldUnit}>yrs</Text>
-        </View>
-        <View style={[styles.fieldRow, styles.fieldRowBorder]}>
-          <Text style={styles.fieldLbl}>Height</Text>
-          <TextInput
-            style={styles.fieldInp}
-            value={height}
-            onChangeText={(v) => setField('height', v)}
-            placeholder="175"
-            placeholderTextColor={ob.ink3 + '80'}
-            keyboardType="number-pad"
-            returnKeyType="next"
-          />
-          <Text style={styles.fieldUnit}>cm</Text>
-        </View>
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLbl}>Weight</Text>
-          <TextInput
-            style={styles.fieldInp}
-            value={weight}
-            onChangeText={(v) => setField('weight', v)}
-            placeholder="72"
-            placeholderTextColor={ob.ink3 + '80'}
-            keyboardType="decimal-pad"
-            returnKeyType="done"
-          />
-          <Text style={styles.fieldUnit}>kg</Text>
-        </View>
-      </View>
+      <View style={styles.card}>
+        {GOAL_OPTIONS.map((option, index) => {
+          const selected = goal === option.value;
 
-      {/* Sex selector */}
-      <Text style={styles.sectionLabel}>Biological sex</Text>
-      <View style={styles.sexRow}>
-        {SEX_OPTIONS.map((opt) => {
-          const selected = sex === opt;
           return (
             <Pressable
-              key={opt}
-              style={[styles.sexPill, selected && styles.sexPillSelected]}
-              onPress={() => setField('sex', opt)}
+              key={option.value}
+              style={[
+                styles.row,
+                selected && styles.rowSelected,
+                index < GOAL_OPTIONS.length - 1 && styles.rowBorder,
+              ]}
+              onPress={() => setField('goal', option.value)}
             >
-              <Text style={[styles.sexPillText, selected && styles.sexPillTextSelected]}>
-                {opt}
-              </Text>
+              <View style={styles.textWrap}>
+                <Text style={styles.title}>{option.title}</Text>
+                <Text style={styles.sub}>{option.sub}</Text>
+              </View>
+              <View style={[styles.radio, selected && styles.radioOn]}>
+                {selected ? <View style={styles.radioInner} /> : null}
+              </View>
             </Pressable>
           );
         })}
       </View>
-    </OBShell>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
-  fieldCard: {
-    backgroundColor: ob.surface,
+  card: {
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     overflow: 'hidden',
-    marginBottom: 8,
   },
-  fieldRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    gap: 12,
+    paddingVertical: 18,
   },
-  fieldRowBorder: {
+  rowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30,26,24,0.06)',
+    borderBottomColor: onboarding.borderSubtle,
   },
-  fieldLbl: {
-    fontFamily: ob.sansMedium,
-    fontSize: 11,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: ob.ink3,
-    width: 64,
+  rowSelected: {
+    backgroundColor: onboarding.accentPale,
+  },
+  textWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  title: {
+    fontFamily: fonts.displayRegular,
+    fontSize: 20,
+    color: onboarding.accentDeep,
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  sub: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: onboarding.textSecondary,
+    lineHeight: 17,
+    maxWidth: 230,
+  },
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: onboarding.border,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
   },
-  fieldInp: {
-    flex: 1,
-    fontFamily: ob.serif,
-    fontSize: 22,
-    color: ob.ink,
-    letterSpacing: -0.2,
-    padding: 0,
+  radioOn: {
+    backgroundColor: onboarding.accentDeep,
+    borderColor: onboarding.accentDeep,
   },
-  fieldUnit: {
-    fontFamily: ob.sansRegular,
-    fontSize: 11,
-    color: ob.ink3,
-  },
-
-  sectionLabel: {
-    fontFamily: ob.sansMedium,
-    fontSize: 9,
-    letterSpacing: 1.3,
-    textTransform: 'uppercase',
-    color: ob.ink3,
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  sexRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-  },
-  sexPill: {
-    flex: 1,
-    paddingVertical: 14,
-    alignItems: 'center',
-    backgroundColor: ob.surface,
-    borderWidth: 1,
-    borderColor: ob.border2,
-    borderRadius: 14,
-  },
-  sexPillSelected: {
-    backgroundColor: ob.rosePale,
-    borderColor: ob.roseDeep,
-  },
-  sexPillText: {
-    fontFamily: ob.serif,
-    fontSize: 16,
-    color: ob.ink,
-  },
-  sexPillTextSelected: {
-    color: ob.roseDeep,
+  radioInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: onboarding.heroText,
   },
 });

@@ -24,14 +24,14 @@ const STREAK_DATA = [1, 1, 1, 1, 0, 1, 0]; // 1=done, 0=missed
 
 export default function RecoveryScreen() {
   const insets = useSafeAreaInsets();
-  const { user, today, setWorkoutName } = useAppStore();
+  const { user, today, setWorkoutSelection } = useAppStore();
   const [mode, setMode] = useState<RecoveryMode>('default');
   const lowSleep = today.sleep < 6;
   const score = today.recoveryScore;
 
   const accept = () => {
     setMode('accepted');
-    setWorkoutName('Light Mobility Flow');
+    setWorkoutSelection({ name: 'Light Mobility Flow', durationMin: 20 });
   };
 
   const ringColor = score > 75 ? colors.mint : score > 50 ? colors.sky : colors.rose;

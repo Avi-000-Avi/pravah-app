@@ -12,8 +12,9 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { captureError } from '@/lib/monitoring';
+import { supabase } from '@/lib/supabase';
+import { mapMealRow } from '@/features/meals/utils/mapMealRow';
 import type { Meal, UseMealsFilters } from '../types';
 
 /** Stable key root — also exported so other code can invalidate this cache. */
@@ -28,21 +29,11 @@ async function fetchMeals(filters: UseMealsFilters): Promise<Meal[]> {
   const { data, error } = await query;
 
   if (error) {
-    captureError(error);
+    captureError(error, { action: 'read_meals' });
     throw error;
   }
 
-  // Postgres `numeric` columns come back as strings from supabase-js
-  // (to preserve precision). Coerce here so the rest of the app sees
-  // protein/carbs/fat as numbers.
-  return (data ?? []).map(
-    (row): Meal => ({
-      ...(row as Meal),
-      protein_g: Number((row as { protein_g: number | string }).protein_g),
-      carbs_g: Number((row as { carbs_g: number | string }).carbs_g),
-      fat_g: Number((row as { fat_g: number | string }).fat_g),
-    }),
-  );
+  return (data ?? []).map((row): Meal => mapMealRow(row));
 }
 
 /**
