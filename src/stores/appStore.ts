@@ -10,12 +10,12 @@
  */
 import { create } from 'zustand';
 
-export type WorkoutStatus = 'pending' | 'done';
+export type WorkoutStatus = 'pending' | 'completed';
 
 interface TodayState {
   progress: number; // 0–100 overall day progress
   meals: { total: number; done: number };
-  workout: { status: WorkoutStatus; name: string };
+  workout: { status: WorkoutStatus; name: string; durationMin: number };
   sleep: number; // hours
   recoveryScore: number; // 0–100
 }
@@ -32,15 +32,15 @@ interface AppState {
   // Mutators
   setMealLogged: () => void;
   setWorkoutDone: () => void;
-  setWorkoutName: (name: string) => void;
+  setWorkoutSelection: (workout: { name: string; durationMin: number }) => void;
   bumpProgress: (by?: number) => void;
   resetDay: () => void;
 }
 
 const DEFAULT_TODAY: TodayState = {
   progress: 38,
-  meals: { total: 3, done: 1 },
-  workout: { status: 'pending', name: 'Upper Body Strength' },
+  meals: { total: 4, done: 1 },
+  workout: { status: 'pending', name: 'Upper Body Strength', durationMin: 45 },
   sleep: 5.2,
   recoveryScore: 68,
 };
@@ -65,14 +65,21 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => ({
       today: {
         ...s.today,
-        workout: { ...s.today.workout, status: 'done' },
+        workout: { ...s.today.workout, status: 'completed' },
         progress: Math.min(100, s.today.progress + 20),
       },
     })),
 
-  setWorkoutName: (name) =>
+  setWorkoutSelection: (workout) =>
     set((s) => ({
-      today: { ...s.today, workout: { ...s.today.workout, name } },
+      today: {
+        ...s.today,
+        workout: {
+          ...s.today.workout,
+          ...workout,
+          status: 'pending',
+        },
+      },
     })),
 
   bumpProgress: (by = 6) =>

@@ -1,21 +1,20 @@
 import { Stack } from 'expo-router';
-import { ob } from '@/features/onboarding/theme';
+import { onboarding } from '@/lib/theme';
 
 /**
- * Onboarding v2 stack.
+ * Canonical 6-step onboarding stack.
  *
- * welcome  — splash, no back gesture (entry point).
- * step-1   — goal selection, no back gesture (prevents swipe back to welcome).
- * step-2-6 — allow back gesture so users can edit prior answers.
- *
- * The in-memory `useOBStore` retains answers across navigation.
+ * `welcome` is the entry screen.
+ * `step-1` disables the back gesture so the first committed choice feels intentional.
+ * `step-2` through `step-5` allow back navigation for edits.
+ * `step-6` disables the gesture while the final save CTA is shown.
  */
 export default function OnboardingLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: ob.bg },
+        contentStyle: { backgroundColor: onboarding.bg },
         animation: 'slide_from_right',
       }}
     >

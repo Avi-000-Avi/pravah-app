@@ -6,6 +6,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTodayWorkout } from '@/features/workouts';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
 import { useAppStore } from '@/stores/appStore';
@@ -22,9 +23,22 @@ function getFormattedDate(): string {
   return new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+function formatWorkoutMinutes(durationMin: number): string {
+  return `${durationMin} min`;
+}
+
+function formatWorkoutMinutesFromSeconds(durationSec: number | null): string | null {
+  if (durationSec == null) {
+    return null;
+  }
+
+  return `${Math.max(1, Math.round(durationSec / 60))} min`;
+}
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { user, today, bumpProgress } = useAppStore();
+  const workoutQuery = useTodayWorkout(today.workout.name);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -37,13 +51,22 @@ export default function TodayScreen() {
   }, [fadeAnim]);
 
   const hour = new Date().getHours();
-  const workoutDone = today.workout.status === 'done';
+  const selectedWorkout = workoutQuery.todayWorkout.workout;
+  const workoutName = selectedWorkout?.name ?? today.workout.name;
+  const workoutDurationLabel = formatWorkoutMinutes(
+    selectedWorkout?.duration_min ?? today.workout.durationMin,
+  );
+  const completedWorkoutDurationLabel =
+    formatWorkoutMinutesFromSeconds(workoutQuery.todayWorkout.plan?.duration_sec ?? null) ??
+    workoutDurationLabel;
+  const workoutDone =
+    workoutQuery.todayWorkout.status === 'completed' || today.workout.status === 'completed';
 
   const nextAction = (() => {
     if (!workoutDone && hour >= 7 && hour < 10)
       return {
         label: 'Time to train',
-        sub: today.workout.name,
+        sub: workoutName,
         cta: 'Start Workout',
         screen: '/(tabs)/workout' as const,
         color: colors.mint,
@@ -67,7 +90,7 @@ export default function TodayScreen() {
     if (!workoutDone)
       return {
         label: 'Workout pending',
-        sub: today.workout.name,
+        sub: workoutName,
         cta: 'Start Workout',
         screen: '/(tabs)/workout' as const,
         color: colors.mint,
@@ -204,11 +227,11 @@ export default function TodayScreen() {
               <MaterialIcons name="fitness-center" size={18} color={colors.eggplant} />
             </View>
             <View style={st.rowTxt}>
-              <Text style={st.rowTitle}>
-                {workoutDone ? 'Workout complete ✓' : today.workout.name}
-              </Text>
+              <Text style={st.rowTitle}>{workoutDone ? 'Workout complete ✓' : workoutName}</Text>
               <Text style={st.rowSub}>
-                {workoutDone ? 'Upper Body Strength · 42 min' : '45 min · Upper Body Strength'}
+                {workoutDone
+                  ? `${workoutName} · ${completedWorkoutDurationLabel}`
+                  : `${workoutDurationLabel} · ${workoutName}`}
               </Text>
             </View>
             <View style={[st.chip, { backgroundColor: workoutDone ? colors.mint : colors.tonal }]}>

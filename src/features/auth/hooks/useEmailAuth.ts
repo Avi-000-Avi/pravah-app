@@ -1,4 +1,7 @@
+import * as Linking from 'expo-linking';
 import { useCallback, useState } from 'react';
+import { track } from '@/lib/analytics';
+import { captureError } from '@/lib/monitoring';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -49,10 +52,12 @@ export function useEmailAuth() {
           password,
         });
         if (sbError) throw sbError;
+        track('sign_in', { method: 'email' });
         // Route guard handles redirect once session lands.
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Couldn't sign in.";
         setError(msg);
+        captureError(e, { action: 'email_sign_in' });
         throw e;
       } finally {
         setIsLoading(false);
@@ -75,8 +80,12 @@ export function useEmailAuth() {
         const { data, error: sbError } = await supabase.auth.signUp({
           email: email.trim(),
           password,
+          options: {
+            emailRedirectTo: Linking.createURL('auth-callback'),
+          },
         });
         if (sbError) throw sbError;
+        track('sign_up', { method: 'email' });
 
         // When "Confirm email" is enabled, signUp returns a user but no session.
         // The user must click the verification link before they can sign in.
@@ -86,6 +95,7 @@ export function useEmailAuth() {
       } catch (e) {
         const msg = e instanceof Error ? e.message : "Couldn't create your account.";
         setError(msg);
+        captureError(e, { action: 'email_sign_up' });
         throw e;
       } finally {
         setIsLoading(false);

@@ -1,5 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/lib/database.types';
 import { storage } from '@/lib/storage';
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
@@ -12,7 +13,7 @@ if (!supabaseAnonKey) {
   throw new Error('Missing env var: EXPO_PUBLIC_SUPABASE_ANON_KEY');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: {
       getItem: (key) => storage.getString(key) ?? null,

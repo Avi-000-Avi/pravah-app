@@ -1,129 +1,112 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { OBShell } from '@/components/onboarding/OBShell';
-import { useOBStore } from '@/features/onboarding/store';
-import { ob } from '@/features/onboarding/theme';
-import type { OBGoal } from '@/features/onboarding/store';
+import { DIET_OPTIONS, OnboardingShell, useOnboardingStore } from '@/features/onboarding';
+import { fonts, onboarding } from '@/lib/theme';
 
-const GOALS: { value: OBGoal; title: string; sub: string }[] = [
-  {
-    value: 'build_muscle',
-    title: 'Build muscle',
-    sub: 'Progressive overload, volume, and structural growth.',
-  },
-  { value: 'lose_fat', title: 'Lose fat', sub: 'Sustainable deficit with muscle preservation.' },
-  {
-    value: 'improve_fitness',
-    title: 'Improve fitness',
-    sub: 'Endurance-based conditioning and stamina.',
-  },
-  {
-    value: 'feel_better',
-    title: 'Feel better',
-    sub: 'Sleep, stress, and energy — recovery first.',
-  },
-];
-
-export default function Step1Goal() {
-  const goal = useOBStore((s) => s.goal);
-  const setField = useOBStore((s) => s.setField);
+export default function Step1Diet() {
+  const dietType = useOnboardingStore((state) => state.dietType);
+  const setField = useOnboardingStore((state) => state.setField);
 
   return (
-    <OBShell
+    <OnboardingShell
       step={1}
-      stepLabel="Step 01 / Primary Directive"
-      titleLine1="What is your"
-      titleLine2="intention?"
-      desc="One goal shapes everything. You can evolve it later."
+      stepLabel="Step 01 / Food style"
+      titleLine1="Meals that fit"
+      titleLine2="your plate."
+      desc="Choose the pattern you actually follow so every recommendation feels native from day one."
       navActionLabel="Exit"
       onNavAction={() => router.replace('/(onboarding)/welcome')}
       ctaLabel="Continue"
-      ctaDisabled={goal === null}
+      ctaDisabled={dietType === null}
       onCta={() => router.push('/(onboarding)/step-2')}
     >
       <View style={styles.card}>
-        {GOALS.map((g, idx) => {
-          const selected = goal === g.value;
+        {DIET_OPTIONS.map((option, index) => {
+          const selected = dietType === option.value;
+
           return (
             <Pressable
-              key={g.value}
+              key={option.value}
               style={[
-                styles.radioRow,
-                selected && styles.radioRowSelected,
-                idx < GOALS.length - 1 && styles.radioRowBorder,
+                styles.row,
+                selected && styles.rowSelected,
+                index < DIET_OPTIONS.length - 1 && styles.rowBorder,
               ]}
-              onPress={() => setField('goal', g.value)}
+              onPress={() => setField('dietType', option.value)}
             >
-              <View style={styles.radioText}>
-                <Text style={styles.radioTitle}>{g.title}</Text>
-                <Text style={styles.radioSub}>{g.sub}</Text>
+              <View style={styles.textWrap}>
+                <Text style={styles.title}>{option.title}</Text>
+                <Text style={styles.sub}>{option.sub}</Text>
               </View>
-              <View style={[styles.radioDot, selected && styles.radioDotOn]}>
-                {selected && <View style={styles.radioDotInner} />}
+              <View style={[styles.radio, selected && styles.radioOn]}>
+                {selected ? <View style={styles.radioInner} /> : null}
               </View>
             </Pressable>
           );
         })}
       </View>
-    </OBShell>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: ob.surface,
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     overflow: 'hidden',
   },
-  radioRow: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 18,
   },
-  radioRowBorder: {
+  rowBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30,26,24,0.06)',
+    borderBottomColor: onboarding.borderSubtle,
   },
-  radioRowSelected: {
-    backgroundColor: ob.rosePale,
+  rowSelected: {
+    backgroundColor: onboarding.accentPale,
   },
-  radioText: { flex: 1, paddingRight: 12 },
-  radioTitle: {
-    fontFamily: ob.serif,
+  textWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  title: {
+    fontFamily: fonts.displayRegular,
     fontSize: 20,
-    color: ob.ink,
+    color: onboarding.accentDeep,
     letterSpacing: -0.2,
     marginBottom: 2,
   },
-  radioSub: {
-    fontFamily: ob.sans,
+  sub: {
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: ob.ink3,
+    color: onboarding.textSecondary,
     lineHeight: 17,
-    maxWidth: 210,
+    maxWidth: 230,
   },
-  radioDot: {
+  radio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: ob.border,
+    borderColor: onboarding.border,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
-  radioDotOn: {
-    backgroundColor: ob.roseDeep,
-    borderColor: ob.roseDeep,
+  radioOn: {
+    backgroundColor: onboarding.accentDeep,
+    borderColor: onboarding.accentDeep,
   },
-  radioDotInner: {
+  radioInner: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#ffffff',
+    backgroundColor: onboarding.heroText,
   },
 });

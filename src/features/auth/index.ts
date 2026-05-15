@@ -1,4 +1,6 @@
 export { useAuth } from './hooks/useAuth';
+export { useAuthCallback } from './hooks/useAuthCallback';
+export { useAuthBootstrap } from './hooks/useAuthBootstrap';
 export { useEmailAuth } from './hooks/useEmailAuth';
 export { useGoogleSSO } from './hooks/useGoogleSSO';
 // Phone OTP kept on disk; not the active sign-in path until SMS is wired.
