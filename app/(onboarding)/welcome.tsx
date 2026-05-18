@@ -1,26 +1,20 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ob } from '@/features/onboarding/theme';
+import { useAuth } from '@/features/auth';
+import { onboarding } from '@/lib/theme';
+import { fonts } from '@/lib/theme';
 
-const PILLARS = ['Nutrition', 'Training', 'Recovery', 'Community'];
+const PILLARS = ['Nutrition', 'Training', 'Recovery', 'Consistency'];
 
-/**
- * Gradient top is approximated with two layered Views:
- * - base layer: dark maroon (#3d1f1f)
- * - overlay: semi-transparent rose that fades in toward the bottom-right
- * This avoids expo-linear-gradient's native module dependency.
- */
 export default function WelcomeScreen() {
   const insets = useSafeAreaInsets();
+  const { signOut } = useAuth();
 
   return (
     <View style={styles.root}>
-      {/* Gradient top — pure RN, no native module */}
       <View style={styles.gradientTop}>
-        {/* Warm rose overlay to simulate gradient */}
         <View style={styles.gradientOverlay} />
-        {/* Decorative circles */}
         <View style={styles.decor1} />
         <View style={styles.decor2} />
 
@@ -28,26 +22,31 @@ export default function WelcomeScreen() {
           <Text style={styles.wordmark}>Pravah</Text>
           <Text style={styles.tagline}>configure your flow</Text>
           <View style={styles.pillars}>
-            {PILLARS.map((p) => (
-              <View key={p} style={styles.pillar}>
-                <Text style={styles.pillarText}>{p}</Text>
+            {PILLARS.map((pill) => (
+              <View key={pill} style={styles.pillar}>
+                <Text style={styles.pillarText}>{pill}</Text>
               </View>
             ))}
           </View>
         </View>
       </View>
 
-      {/* Bottom section */}
       <View style={[styles.bottom, { paddingBottom: insets.bottom + 28 }]}>
-        <Text style={styles.headline}>The Zero-Decision{'\n'}System</Text>
+        <Text style={styles.headline}>The zero-decision{'\n'}system</Text>
         <Text style={styles.subtitle}>
-          We handle the cognitive load.{'\n'}You focus on the movement.
+          We set your food rhythm and prep boundaries up front, then the daily decisions get
+          lighter.
         </Text>
         <Pressable style={styles.ctaBtn} onPress={() => router.push('/(onboarding)/step-1')}>
           <Text style={styles.ctaBtnText}>Begin your flow</Text>
         </Pressable>
-        <Pressable style={styles.ghostBtn} onPress={() => router.push('/(onboarding)/step-1')}>
-          <Text style={styles.ghostBtnText}>I already have an account</Text>
+        <Pressable
+          style={styles.ghostBtn}
+          onPress={() => {
+            void signOut();
+          }}
+        >
+          <Text style={styles.ghostBtnText}>Use a different account</Text>
         </Pressable>
       </View>
     </View>
@@ -55,18 +54,16 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: ob.bg },
-
+  root: { flex: 1, backgroundColor: onboarding.bg },
   gradientTop: {
     flex: 1,
-    backgroundColor: '#3d1f1f',
+    backgroundColor: onboarding.heroBg,
     overflow: 'hidden',
     position: 'relative',
   },
-  // Semi-transparent rose layer shifted to bottom-right to simulate the gradient angle
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: ob.rose,
+    backgroundColor: onboarding.heroOverlay,
     opacity: 0.45,
   },
   gradientContent: {
@@ -82,7 +79,7 @@ const styles = StyleSheet.create({
     height: 400,
     borderRadius: 200,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: onboarding.heroOutline,
     bottom: -160,
     right: -120,
   },
@@ -92,22 +89,21 @@ const styles = StyleSheet.create({
     height: 280,
     borderRadius: 140,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: onboarding.heroOutline,
     bottom: -80,
     right: -50,
   },
-
   wordmark: {
-    fontFamily: ob.serif,
+    fontFamily: fonts.displayRegular,
     fontSize: 52,
-    color: '#ffffff',
+    color: onboarding.heroText,
     letterSpacing: -1.5,
     marginBottom: 8,
   },
   tagline: {
-    fontFamily: ob.serifItalic,
+    fontFamily: fonts.displayItalic,
     fontSize: 13,
-    color: 'rgba(255,255,255,0.6)',
+    color: onboarding.heroTextMuted,
     marginBottom: 40,
   },
   pillars: {
@@ -117,51 +113,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pillar: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: onboarding.heroChip,
     borderRadius: 40,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
+    borderColor: onboarding.heroChipBorder,
     paddingHorizontal: 14,
     paddingVertical: 7,
   },
   pillarText: {
-    fontFamily: ob.sans,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: 'rgba(255,255,255,0.9)',
+    color: onboarding.heroTextStrong,
     letterSpacing: 0.3,
   },
-
   bottom: {
-    backgroundColor: ob.bg,
+    backgroundColor: onboarding.bg,
     paddingHorizontal: 22,
     paddingTop: 22,
   },
   headline: {
-    fontFamily: ob.serif,
+    fontFamily: fonts.displayRegular,
     fontSize: 22,
-    color: ob.ink,
+    color: onboarding.accentDeep,
     lineHeight: 27,
     letterSpacing: -0.2,
     marginBottom: 6,
   },
   subtitle: {
-    fontFamily: ob.sans,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: ob.ink3,
+    color: onboarding.textSecondary,
     lineHeight: 20,
     marginBottom: 20,
   },
   ctaBtn: {
-    backgroundColor: ob.rose,
+    backgroundColor: onboarding.accent,
     borderRadius: 40,
     paddingVertical: 16,
     alignItems: 'center',
     marginBottom: 8,
   },
   ctaBtnText: {
-    fontFamily: ob.sansRegular,
+    fontFamily: fonts.body,
     fontSize: 15,
-    color: '#ffffff',
+    color: onboarding.heroText,
     letterSpacing: 0.3,
   },
   ghostBtn: {
@@ -169,9 +164,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   ghostBtnText: {
-    fontFamily: ob.sans,
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: ob.ink3,
+    color: onboarding.textSecondary,
     letterSpacing: 0.5,
   },
 });

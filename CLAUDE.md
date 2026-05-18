@@ -2,107 +2,81 @@
 
 ## Stack
 
-| Layer           | Choice                                                              |
-| --------------- | ------------------------------------------------------------------- |
-| Framework       | Expo SDK 55, React Native 0.81, expo-router v4 (file-based routing) |
-| Language        | TypeScript — strict + noUncheckedIndexedAccess                      |
-| State           | Zustand (global), TanStack Query v5 (server state)                  |
-| Backend         | Supabase (Postgres + Auth + Realtime + Storage)                     |
-| Local storage   | react-native-mmkv (used by supabase auth adapter)                   |
-| Analytics       | PostHog (`src/lib/analytics.ts`)                                    |
-| Error tracking  | Sentry (`src/lib/monitoring.ts`)                                    |
-| Package manager | pnpm — always use `pnpm`, never npm or yarn                         |
+| Layer           | Choice                                                          |
+| --------------- | --------------------------------------------------------------- |
+| Framework       | Expo SDK 55, React Native 0.83.6, expo-router                   |
+| Language        | TypeScript strict + `noUncheckedIndexedAccess`                  |
+| State           | Zustand for transient/app state, TanStack Query for server data |
+| Backend         | Supabase (Auth, Postgres, Edge Functions)                       |
+| Local storage   | `react-native-mmkv` through `src/lib/storage.ts`                |
+| Analytics       | PostHog via `src/lib/analytics.ts`                              |
+| Error tracking  | Sentry via `src/lib/monitoring.ts`                              |
+| Package manager | pnpm only                                                       |
+
+## Architecture rules
+
+- `app/` owns routing only. No direct Supabase calls, data mapping, or domain orchestration in route files.
+- `src/features/{domain}` owns its hooks, store, components, and mappers.
+- `src/features/onboarding` is the only onboarding draft flow.
+- `src/features/preferences` owns persisted preference reads and future settings writes.
+- `src/lib/supabase.ts` is the only Supabase client and is typed by `src/lib/database.types.ts`.
+- TanStack Query is the source of truth for server-backed data. Zustand is for transient UI/session concerns only.
+- New shared UI belongs in `src/components/` only if it is genuinely cross-domain.
 
 ## Folder rules
 
-```
-app/               expo-router pages only — no business logic
-  (auth)/          unauthenticated screens
-  (onboarding)/    first-run flow
-  (tabs)/          main tab navigator
+```text
+app/
+  (auth)/
+  (onboarding)/
+  (tabs)/
 src/
-  features/        one folder per domain (auth, meals, workouts, …)
-  lib/             shared singletons: supabase, theme, analytics, monitoring
-  components/      shared primitives only (Card, Pill, SectionLabel)
-  hooks/           shared custom hooks
-  types/           shared TypeScript types and interfaces
-supabase/
-  migrations/      sequential SQL migrations — forward-only
-  functions/       Edge Functions
-  seed/            local seed data
+  components/      shared primitives only
+  features/        auth, meals, onboarding, preferences, future domains
+  lib/             theme, supabase, analytics, monitoring, storage
+  stores/          app-wide transient state only
+docs/
+  engineering/
+brain/
 ```
 
-**Feature folder convention** — each feature owns its own components, hooks, stores, and types:
-
-```
-src/features/meals/
-  components/
-  hooks/
-  store.ts
-  types.ts
-```
+Avoid reviving `src/hooks` or `src/types` as generic dumping grounds.
 
 ## Design system rules
 
-- **Always use tokens** from `src/lib/theme.ts`. Never hardcode hex values, font sizes, spacing numbers, or border radii.
-- **No weight 600/700** — design only uses `400` (regular) and `500` (medium).
-- **Sentence case everywhere** — UI labels, button text, section headers. No ALL CAPS except Pill/SectionLabel which apply `textTransform: uppercase` via the component.
-- **Macro colours are semantic** — use `protein`/`carbs`/`fat` variants only for their respective macronutrient context; use `brand` for UI chrome.
-- **Primitives** — use `Card`, `Pill`, `SectionLabel` from `src/components/`. Don't re-implement them inline.
-- Never add new colour values. Extend the theme file and request design review.
+- Use tokens from `src/lib/theme.ts`. Do not add new app colors, spacing, radii, or font constants elsewhere.
+- Keep copy in sentence case.
+- Prefer shared primitives such as `Card`, `Pill`, `PrimaryButton`, and `SectionLabel` before inventing one-off UI patterns.
+- If a new semantic token is needed, add it to `theme.ts` first.
 
-## Do / don't
+## Data and observability rules
 
-| Do                                                    | Don't                                                   |
-| ----------------------------------------------------- | ------------------------------------------------------- |
-| Use `track()` for meaningful user actions             | Don't call Supabase or PostHog directly from components |
-| Throw typed errors; catch at feature boundaries       | Don't swallow errors silently                           |
-| Gate all Supabase queries with RLS and `auth.uid()`   | Don't call Supabase from the client without RLS enabled |
-| Use `captureError()` for unexpected exceptions        | Don't use `console.log` (warn/error are fine)           |
-| Write migration SQL in `supabase/migrations/`         | Don't edit already-deployed migrations                  |
-| Import types with `import type`                       | Don't mix value and type imports                        |
-| Match existing patterns in the feature you're editing | Don't introduce new patterns without discussion         |
+- Feature hooks own Supabase access.
+- Unexpected errors should reach `captureError()`.
+- Meaningful user actions should reach `track()`.
+- Do not log or send PII to analytics.
+- Prefer explicit database-row-to-domain mappers at feature boundaries.
 
-## Branching model
+## Testing rules
 
-```
-main        protected, production — only hotfix merges and release PRs
-develop     integration branch — all feature work merges here first
-feat/*      short-lived feature branches from develop
-fix/*       bug fix branches from develop
-chore/*     tooling, deps, config — from develop
-hotfix/*    urgent production fixes from main, merged into both main + develop
-```
+- Prefer direct imports of the hook or module under test instead of wide feature barrels.
+- Mock Supabase at the feature boundary.
+- Keep tests focused on auth flows, onboarding persistence, route resolution, and data hooks before building broader UI coverage.
 
-Commit messages follow Conventional Commits with sentence-case subject:
-
-```
-feat: Add meal plan screen
-fix: Correct calorie rounding in macro summary
-chore: Upgrade expo-router to v4.1
-```
-
-## Common commands
+## Commands
 
 ```bash
-pnpm start          # Expo dev server
-pnpm typecheck      # tsc --noEmit
-pnpm lint           # ESLint
-pnpm lint:fix       # ESLint --fix
-pnpm format         # Prettier write
-pnpm format:check   # Prettier check (used in CI)
-pnpm db:start       # Start local Supabase (requires supabase CLI)
-pnpm db:reset       # Reset + re-seed local DB
-pnpm db:migrate     # Push migrations to linked project
-pnpm db:diff        # Generate migration from schema diff
+pnpm start
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm format:check
+pnpm db:start
+pnpm db:reset
+pnpm db:migrate
 ```
 
-## Environment variables
+## Source of truth
 
-Copy `.env.example` → `.env` and fill in values before running locally.
-All client-visible vars are prefixed `EXPO_PUBLIC_`.
-Never commit `.env` — it is gitignored.
-
-## Match existing patterns
-
-Before adding a new hook, store, or utility, check if a similar one already exists in the relevant feature folder or `src/lib`. Prefer extending existing abstractions to creating parallel ones.
+- Code and `docs/engineering/*` are the primary engineering source of truth.
+- `brain/*` is AI/session memory and handoff context, not the authoritative architecture spec.

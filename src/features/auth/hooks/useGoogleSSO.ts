@@ -1,5 +1,7 @@
 import * as Linking from 'expo-linking';
 import { useCallback, useState } from 'react';
+import { track } from '@/lib/analytics';
+import { captureError } from '@/lib/monitoring';
 import { supabase } from '@/lib/supabase';
 
 // Lazy-load expo-web-browser so the module doesn't crash when the native
@@ -68,9 +70,11 @@ export function useGoogleSSO() {
         refresh_token,
       });
       if (setErr) throw setErr;
+      track('sign_in', { method: 'google' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Google sign-in failed.';
       setError(msg);
+      captureError(e, { action: 'google_sign_in' });
       throw e;
     } finally {
       setIsLoading(false);

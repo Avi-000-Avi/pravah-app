@@ -1,315 +1,145 @@
 import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { OBShell } from '@/components/onboarding/OBShell';
-import { useOBStore } from '@/features/onboarding/store';
-import { ob } from '@/features/onboarding/theme';
-import type { OBActivityLevel } from '@/features/onboarding/store';
+import { MEAL_COUNT_OPTIONS, OnboardingShell, useOnboardingStore } from '@/features/onboarding';
+import { fonts, onboarding } from '@/lib/theme';
 
-const ACTIVITY_LEVELS: { value: OBActivityLevel; title: string; sub: string }[] = [
-  { value: 'lightly_active', title: 'Lightly active', sub: 'Mostly desk-based, a few sessions' },
-  { value: 'moderately_active', title: 'Moderately active', sub: 'Regular movement, 3–5 sessions' },
-  { value: 'very_active', title: 'Very active', sub: 'Daily training, physically demanding work' },
+const PREVIEW = [
+  { label: '2 meals', sub: 'A simpler lunch + dinner rhythm' },
+  { label: '3 meals', sub: 'Classic breakfast, lunch, dinner flow' },
+  { label: '4+ meals', sub: 'More spread-out protein and snack support' },
 ];
 
-/** Macro estimates are static; in production these would be computed from body stats. */
-const MACROS = { kcal: '1,840', protein: '144g', carbs: '184g', fat: '58g' };
-
-export default function Step3Momentum() {
-  const { sessionsPerWeek, activityLevel, setField } = useOBStore();
+export default function Step3MealCount() {
+  const mealCount = useOnboardingStore((state) => state.mealCount);
+  const setField = useOnboardingStore((state) => state.setField);
 
   return (
-    <OBShell
+    <OnboardingShell
       step={3}
-      stepLabel="Step 03 / Weekly Momentum"
-      titleLine1="Sessions you'll"
-      titleLine2="actually do."
-      desc="Honest consistency beats perfect plans."
+      stepLabel="Step 03 / Daily rhythm"
+      titleLine1="How many meal"
+      titleLine2="moments fit your day?"
+      desc="Pick the cadence you can repeat on busy weekdays, not your most perfect day."
       navActionLabel="Back"
       onNavAction={() => router.back()}
       ctaLabel="These look right"
-      ctaDisabled={activityLevel === null}
+      ctaDisabled={mealCount === null}
       onCta={() => router.push('/(onboarding)/step-4')}
     >
-      {/* Sessions stepper */}
       <View style={styles.stepperCard}>
-        <Text style={styles.stepperQ}>How many sessions can you commit to without friction?</Text>
+        <Text style={styles.stepperQ}>Meals per day</Text>
         <View style={styles.stepperRow}>
-          <Pressable
-            style={styles.stepperBtn}
-            onPress={() => setField('sessionsPerWeek', Math.max(1, sessionsPerWeek - 1))}
-          >
-            <Text style={styles.stepperBtnText}>−</Text>
-          </Pressable>
-          <View style={styles.stepperCenter}>
-            <Text style={styles.stepperNum}>{sessionsPerWeek}</Text>
-            <Text style={styles.stepperUnit}>Sessions / week</Text>
-          </View>
-          <Pressable
-            style={styles.stepperBtn}
-            onPress={() => setField('sessionsPerWeek', Math.min(7, sessionsPerWeek + 1))}
-          >
-            <Text style={styles.stepperBtnText}>+</Text>
-          </Pressable>
+          {MEAL_COUNT_OPTIONS.map((count) => {
+            const selected = count === mealCount;
+
+            return (
+              <Pressable
+                key={count}
+                style={[styles.stepperPill, selected && styles.stepperPillSelected]}
+                onPress={() => setField('mealCount', count)}
+              >
+                <Text style={[styles.stepperPillText, selected && styles.stepperPillTextSelected]}>
+                  {count}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
-      {/* Activity level */}
-      <Text style={styles.sectionLabel}>Activity level</Text>
-      <View style={styles.card}>
-        {ACTIVITY_LEVELS.map((a, idx) => {
-          const selected = activityLevel === a.value;
-          return (
-            <Pressable
-              key={a.value}
-              style={[
-                styles.radioRow,
-                selected && styles.radioRowSelected,
-                idx < ACTIVITY_LEVELS.length - 1 && styles.radioRowBorder,
-              ]}
-              onPress={() => setField('activityLevel', a.value)}
-            >
-              <View style={styles.radioText}>
-                <Text style={styles.radioTitle}>{a.title}</Text>
-                <Text style={styles.radioSub}>{a.sub}</Text>
-              </View>
-              <View style={[styles.radioDot, selected && styles.radioDotOn]}>
-                {selected && <View style={styles.radioDotInner} />}
-              </View>
-            </Pressable>
-          );
-        })}
+      <Text style={styles.sectionLabel}>What this means</Text>
+      <View style={styles.previewCard}>
+        {PREVIEW.map((item, index) => (
+          <View
+            key={item.label}
+            style={[styles.previewRow, index < PREVIEW.length - 1 && styles.previewBorder]}
+          >
+            <Text style={styles.previewTitle}>{item.label}</Text>
+            <Text style={styles.previewSub}>{item.sub}</Text>
+          </View>
+        ))}
       </View>
-
-      {/* Estimated macro targets */}
-      <Text style={styles.sectionLabel}>Your estimated targets</Text>
-      <View style={styles.macroCard}>
-        <View style={styles.macroNums}>
-          {[
-            { val: MACROS.kcal, lbl: 'kcal' },
-            { val: MACROS.protein, lbl: 'protein' },
-            { val: MACROS.carbs, lbl: 'carbs' },
-            { val: MACROS.fat, lbl: 'fat' },
-          ].map((m) => (
-            <View key={m.lbl} style={styles.macroNum}>
-              <Text style={styles.macroVal}>{m.val}</Text>
-              <Text style={styles.macroLbl}>{m.lbl}</Text>
-            </View>
-          ))}
-        </View>
-        {/* Macro bar */}
-        <View style={styles.macroBar}>
-          <View style={[styles.macroBarP, { flex: 35 }]} />
-          <View style={[styles.macroBarC, { flex: 40 }]} />
-          <View style={[styles.macroBarF, { flex: 25 }]} />
-        </View>
-        {/* Legend */}
-        <View style={styles.macroLegend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: ob.roseDeep }]} />
-            <Text style={styles.legendText}>Protein 35%</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#c4a882' }]} />
-            <Text style={styles.legendText}>Carbs 40%</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#a8b8c4' }]} />
-            <Text style={styles.legendText}>Fat 25%</Text>
-          </View>
-        </View>
-      </View>
-    </OBShell>
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
   stepperCard: {
-    backgroundColor: ob.surface,
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     padding: 20,
     marginBottom: 8,
   },
   stepperQ: {
-    fontFamily: ob.sans,
+    fontFamily: fonts.body,
     fontSize: 13,
-    color: ob.ink2,
+    color: onboarding.textSecondary,
     lineHeight: 20,
     marginBottom: 18,
   },
   stepperRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  stepperBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: ob.roseSoft,
+  stepperPill: {
+    minWidth: 52,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: onboarding.border,
+    backgroundColor: onboarding.bg,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  stepperBtnText: {
-    fontFamily: ob.sansRegular,
+  stepperPillSelected: {
+    backgroundColor: onboarding.accentSoft,
+    borderColor: onboarding.accentDeep,
+  },
+  stepperPillText: {
+    fontFamily: fonts.displayRegular,
     fontSize: 20,
-    color: ob.roseDeep,
-    lineHeight: 24,
+    color: onboarding.accentDeep,
   },
-  stepperCenter: { alignItems: 'center' },
-  stepperNum: {
-    fontFamily: ob.serif,
-    fontSize: 48,
-    color: ob.ink,
-    letterSpacing: -1.5,
-    lineHeight: 52,
+  stepperPillTextSelected: {
+    color: onboarding.accentDeep,
   },
-  stepperUnit: {
-    fontFamily: ob.sansMedium,
-    fontSize: 9,
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    color: ob.ink3,
-    marginTop: 4,
-  },
-
   sectionLabel: {
-    fontFamily: ob.sansMedium,
+    fontFamily: fonts.uiSemi,
     fontSize: 9,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: ob.ink3,
+    color: onboarding.accentDeep,
     marginTop: 20,
     marginBottom: 10,
   },
-
-  card: {
-    backgroundColor: ob.surface,
+  previewCard: {
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     overflow: 'hidden',
-    marginBottom: 8,
   },
-  radioRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  previewRow: {
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  radioRowBorder: {
+  previewBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(30,26,24,0.06)',
+    borderBottomColor: onboarding.borderSubtle,
   },
-  radioRowSelected: { backgroundColor: ob.rosePale },
-  radioText: { flex: 1, paddingRight: 12 },
-  radioTitle: {
-    fontFamily: ob.serif,
+  previewTitle: {
+    fontFamily: fonts.displayRegular,
     fontSize: 16,
-    color: ob.ink,
-    letterSpacing: -0.1,
-    marginBottom: 2,
+    color: onboarding.accentDeep,
+    marginBottom: 3,
   },
-  radioSub: {
-    fontFamily: ob.sans,
+  previewSub: {
+    fontFamily: fonts.body,
     fontSize: 12,
-    color: ob.ink3,
-    lineHeight: 17,
-  },
-  radioDot: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: ob.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  radioDotOn: {
-    backgroundColor: ob.roseDeep,
-    borderColor: ob.roseDeep,
-  },
-  radioDotInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#ffffff',
-  },
-
-  macroCard: {
-    backgroundColor: ob.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: ob.border2,
-    padding: 20,
-    marginBottom: 8,
-  },
-  macroNums: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  macroNum: { alignItems: 'center' },
-  macroVal: {
-    fontFamily: ob.serif,
-    fontSize: 26,
-    color: ob.ink,
-    letterSpacing: -0.5,
-    lineHeight: 28,
-  },
-  macroLbl: {
-    fontFamily: ob.sansMedium,
-    fontSize: 9,
-    letterSpacing: 1.0,
-    textTransform: 'uppercase',
-    color: ob.ink3,
-    marginTop: 4,
-  },
-  macroBar: {
-    height: 5,
-    borderRadius: 3,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    backgroundColor: ob.border2,
-    marginBottom: 10,
-    gap: 2,
-  },
-  macroBarP: {
-    height: '100%',
-    backgroundColor: ob.roseDeep,
-    borderTopLeftRadius: 3,
-    borderBottomLeftRadius: 3,
-  },
-  macroBarC: {
-    height: '100%',
-    backgroundColor: '#c4a882',
-  },
-  macroBarF: {
-    height: '100%',
-    backgroundColor: '#a8b8c4',
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
-  },
-  macroLegend: {
-    flexDirection: 'row',
-    gap: 14,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  legendDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-  },
-  legendText: {
-    fontFamily: ob.sans,
-    fontSize: 10,
-    color: ob.ink3,
+    color: onboarding.textSecondary,
+    lineHeight: 18,
   },
 });

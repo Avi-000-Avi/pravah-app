@@ -1,4 +1,6 @@
 import { useCallback, useState } from 'react';
+import { track } from '@/lib/analytics';
+import { captureError } from '@/lib/monitoring';
 import { supabase } from '@/lib/supabase';
 
 /**
@@ -35,6 +37,7 @@ export function usePhoneOTP() {
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to send code.';
       setError(msg);
+      captureError(e, { action: 'phone_otp_send' });
       throw e;
     } finally {
       setIsLoading(false);
@@ -56,9 +59,11 @@ export function usePhoneOTP() {
         type: 'sms',
       });
       if (sbError) throw sbError;
+      track('sign_in', { method: 'phone' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Invalid code. Try again.';
       setError(msg);
+      captureError(e, { action: 'phone_otp_verify' });
       throw e;
     } finally {
       setIsLoading(false);

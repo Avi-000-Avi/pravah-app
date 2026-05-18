@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { captureError } from '@/lib/monitoring';
 import { supabase } from '@/lib/supabase';
 import type {
   CookingMode,
@@ -63,8 +64,11 @@ export function usePreferences() {
         .select('*')
         .eq('user_id', userId!)
         .maybeSingle();
-      if (error) throw error;
-      return data ? mapRow(data as MealPreferencesRow) : null;
+      if (error) {
+        captureError(error, { action: 'read_preferences' });
+        throw error;
+      }
+      return data ? mapRow(data) : null;
     },
   });
 
