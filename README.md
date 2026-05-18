@@ -17,6 +17,22 @@
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <img src="./assets/screenshots/pravah_flow_9x16.png" width="160" alt="Flow — Workout" />
+  <img src="./assets/screenshots/pravah_fuel_9x16.png" width="160" alt="Fuel — Grocery list" />
+  <img src="./assets/screenshots/pravah_recovery_9x16.png" width="160" alt="Rest — Recovery" />
+</p>
+
+<p align="center">
+  <img src="./assets/screenshots/pravah_today_9x16.png" width="160" alt="Today" />
+  <img src="./assets/screenshots/pravah_setup_9x16.png" width="160" alt="Onboarding — Setup" />
+  <img src="./assets/screenshots/pravah_meal_9x16.png" width="160" alt="Fuel — Meal detail" />
+</p>
+
+---
+
 ## Features
 
 | Area           | What it does                                                                        |
