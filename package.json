@@ -19,6 +19,7 @@
     "db:reset": "supabase db reset",
     "db:migrate": "supabase db push",
     "db:diff": "supabase db diff",
+    "seed:generate": "tsx scripts/generate-seed-sql.ts",
     "prepare": "husky"
   },
   "dependencies": {
@@ -72,6 +73,7 @@
     "jest-expo": "~55.0.0",
     "lint-staged": "^16.4.0",
     "prettier": "^3.8.3",
+    "tsx": "^4.22.4",
     "typescript": "~5.9.2"
   },
   "jest": {
