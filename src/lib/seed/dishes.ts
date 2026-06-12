@@ -625,6 +625,51 @@ export const DISH = {
     tags: ['leftover-friendly', 'budget'],
   }),
 
+  // ---------- Staples-only floor dishes ----------
+  // Every ingredient below is one of the 12 canonical staples, so the
+  // planner's last-resort fallback always has a real dish per slot.
+  andaRotiWrap: dish({
+    name: 'anda roti wrap',
+    slots: ['breakfast', 'dinner'],
+    prep: 15,
+    effort: 2,
+    protein: 15,
+    calories: 390,
+    needs: [
+      [ING.eggs, '2'],
+      [ING.onions, '1 small'],
+      [ING.atta, 'for 2 rotis'],
+      [ING.oil, '2 tsp'],
+    ],
+    steps: [
+      'Make two rotis, or warm yesterday’s.',
+      'Scramble the eggs with onion, salt and chilli.',
+      'Roll the bhurji inside the rotis and pan-press for a minute.',
+    ],
+    tags: ['budget'],
+  }),
+  attaHalwa: dish({
+    name: 'atta halwa with chai',
+    slots: ['breakfast'],
+    prep: 15,
+    effort: 2,
+    protein: 7,
+    calories: 380,
+    needs: [
+      [ING.atta, '0.5 cup'],
+      [ING.ghee, '2 tbsp'],
+      [ING.sugar, '2 tbsp'],
+      [ING.milk, '1 cup'],
+      [ING.tea, 'for 1 cup'],
+    ],
+    steps: [
+      'Roast the atta in ghee until it smells nutty and turns golden.',
+      'Add warm milk and sugar, stirring until it thickens.',
+      'Brew your chai alongside and sit down with both.',
+    ],
+    tags: ['budget'],
+  }),
+
   // ---------- No-cook & assemble (any slot) ----------
   fruitCurdBowl: dish({
     name: 'seasonal fruit and curd bowl',
