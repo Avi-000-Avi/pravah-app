@@ -6,6 +6,7 @@
  * activity heatmap, insight quote, muscle volume bars.
  */
 import { MaterialIcons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useCallback } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -186,6 +187,29 @@ export default function DataScreen() {
               <Text style={st.musclePct}>{m.pct}%</Text>
             </View>
           ))}
+        </View>
+
+        {/* Kitchen settings */}
+        <Text style={st.sectionHead}>Your kitchen</Text>
+        <View style={[st.kitchenCard, shadows.cardSubtle]}>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [st.kitchenRow, st.kitchenRowBorder, pressed && st.rowPressed]}
+            onPress={() => router.push('/(tabs)/kitchen')}
+          >
+            <MaterialIcons name="kitchen" size={18} color={colors.eggplant} />
+            <Text style={st.kitchenRowTxt}>My kitchen</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.warmBrown} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [st.kitchenRow, pressed && st.rowPressed]}
+            onPress={() => router.push('/(tabs)/setup-staples?from=settings')}
+          >
+            <MaterialIcons name="checklist" size={18} color={colors.eggplant} />
+            <Text style={st.kitchenRowTxt}>My staples</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.warmBrown} />
+          </Pressable>
         </View>
 
         {/* Return to onboarding */}
@@ -411,6 +435,32 @@ const st = StyleSheet.create({
     width: 32,
     textAlign: 'right',
   },
+
+  // Kitchen settings
+  kitchenCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  kitchenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  kitchenRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+  kitchenRowTxt: {
+    flex: 1,
+    fontFamily: fonts.bodySemi,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+  },
+  rowPressed: { opacity: 0.7 },
 
   // Return to onboarding
   replayBtn: {

@@ -8,8 +8,10 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
+import { HomeCardStack, useHomeCards } from '@/components/cards';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
+import '@/features/pantry/cards';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -25,6 +27,7 @@ function getFormattedDate(): string {
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { user, today, bumpProgress } = useAppStore();
+  const { cards, dismiss } = useHomeCards();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -140,6 +143,11 @@ export default function TodayScreen() {
           </View>
         </Pressable>
       </Animated.View>
+
+      {/* System cards */}
+      <View style={st.section}>
+        <HomeCardStack cards={cards} onDismiss={dismiss} />
+      </View>
 
       {/* Stat rings */}
       <View style={st.statRow}>
