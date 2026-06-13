@@ -15,6 +15,7 @@ import { useObservation } from '@/hooks/useObservation';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, spacing, typography } from '@/lib/theme';
 import '@/features/pantry/cards';
+import '@/features/leftovers/LeftoverCard';
 
 function getGreeting(): string {
   const h = new Date().getHours();
