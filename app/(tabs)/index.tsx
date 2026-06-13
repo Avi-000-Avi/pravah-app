@@ -5,9 +5,9 @@
  * primary), then at most two system cards from the priority queue.
  * Open → see → close. No streaks, no scores, no guilt.
  */
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeCardStack, useHomeCards } from '@/components/cards';
 import { PlanCard } from '@/features/meals/components/PlanCard';
@@ -15,6 +15,7 @@ import { useObservation } from '@/hooks/useObservation';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, spacing, typography } from '@/lib/theme';
 import '@/features/pantry/cards';
+import '@/features/pantry/UseSoonCard';
 import '@/features/leftovers/LeftoverCard';
 
 function getGreeting(): string {
@@ -69,6 +70,15 @@ export default function TodayScreen() {
         }
       />
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="cook with what I have — find a recipe from your pantry"
+        onPress={() => router.push('/(tabs)/cook-now')}
+        style={({ pressed }) => [styles.cookLink, pressed && styles.cookLinkPressed]}
+      >
+        <Text style={styles.cookLinkText}>cook with what i have ›</Text>
+      </Pressable>
+
       <View style={styles.stack}>
         <HomeCardStack cards={cards} onDismiss={dismiss} />
       </View>
@@ -114,6 +124,19 @@ const styles = StyleSheet.create({
     fontSize: typography.size.md,
     color: colors.text.dark,
     marginTop: spacing.base,
+  },
+  cookLink: {
+    alignSelf: 'flex-start',
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  cookLinkPressed: { opacity: 0.6 },
+  cookLinkText: {
+    fontFamily: fonts.bodySemi,
+    fontSize: typography.size.sm,
+    color: colors.text.secondary,
   },
   stack: {
     marginTop: spacing.sm,
