@@ -6,11 +6,13 @@
  * activity heatmap, insight quote, muscle volume bars.
  */
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
 import { useAuth } from '@/features/auth';
+import { clearToStaples, seedDemoPantry } from '@/lib/demo';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
@@ -36,10 +38,31 @@ export default function DataScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAppStore();
   const { signOut } = useAuth();
+  const [demoLoading, setDemoLoading] = useState(false);
 
   const handleSignOut = useCallback(async () => {
     await signOut();
   }, [signOut]);
+
+  const handleVersionLongPress = useCallback(() => {
+    Alert.alert('demo tools', 'switch pantry state for demo purposes', [
+      {
+        text: 'seed demo pantry',
+        onPress: () => {
+          setDemoLoading(true);
+          void seedDemoPantry().finally(() => setDemoLoading(false));
+        },
+      },
+      {
+        text: 'clear to staples only',
+        onPress: () => {
+          setDemoLoading(true);
+          void clearToStaples().finally(() => setDemoLoading(false));
+        },
+      },
+      { text: 'cancel', style: 'cancel' },
+    ]);
+  }, []);
 
   const weekStats = [
     { label: 'Workouts', val: '5', prev: '4', unit: '' },
@@ -186,6 +209,29 @@ export default function DataScreen() {
           ))}
         </View>
 
+        {/* Kitchen settings */}
+        <Text style={st.sectionHead}>Your kitchen</Text>
+        <View style={[st.kitchenCard, shadows.cardSubtle]}>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [st.kitchenRow, st.kitchenRowBorder, pressed && st.rowPressed]}
+            onPress={() => router.push('/(tabs)/kitchen')}
+          >
+            <MaterialIcons name="kitchen" size={18} color={colors.eggplant} />
+            <Text style={st.kitchenRowTxt}>My kitchen</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.warmBrown} />
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [st.kitchenRow, pressed && st.rowPressed]}
+            onPress={() => router.push('/(tabs)/setup-staples?from=settings')}
+          >
+            <MaterialIcons name="checklist" size={18} color={colors.eggplant} />
+            <Text style={st.kitchenRowTxt}>My staples</Text>
+            <MaterialIcons name="chevron-right" size={18} color={colors.warmBrown} />
+          </Pressable>
+        </View>
+
         {/* Sign out */}
         <Pressable
           style={st.replayBtn}
@@ -195,6 +241,15 @@ export default function DataScreen() {
         >
           <MaterialIcons name="refresh" size={14} color={colors.text.muted} />
           <Text style={st.replayBtnTxt}>Sign out</Text>
+        </Pressable>
+
+        {/* App version — long-press opens demo tools */}
+        <Pressable
+          accessibilityLabel="app version — long press for demo tools"
+          onLongPress={handleVersionLongPress}
+          style={st.versionRow}
+        >
+          <Text style={st.versionText}>{demoLoading ? 'updating pantry…' : 'pravah v1'}</Text>
         </Pressable>
       </View>
     </ScrollView>
@@ -410,6 +465,32 @@ const st = StyleSheet.create({
     textAlign: 'right',
   },
 
+  // Kitchen settings
+  kitchenCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  kitchenRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.gutter,
+    paddingVertical: 14,
+    minHeight: 48,
+  },
+  kitchenRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray[100],
+  },
+  kitchenRowTxt: {
+    flex: 1,
+    fontFamily: fonts.bodySemi,
+    fontSize: typography.size.base,
+    color: colors.text.primary,
+  },
+  rowPressed: { opacity: 0.7 },
+
   // Return to onboarding
   replayBtn: {
     flexDirection: 'row',
@@ -428,5 +509,17 @@ const st = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: typography.size.xs,
     color: colors.text.muted,
+  },
+  versionRow: {
+    alignSelf: 'center',
+    marginTop: spacing.base,
+    paddingVertical: spacing.base,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  versionText: {
+    fontFamily: fonts.body,
+    fontSize: typography.size.xs,
+    color: colors.gray[400],
   },
 });
