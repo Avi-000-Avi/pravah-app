@@ -16,6 +16,8 @@ export interface Database {
           allergies: string[];
           avoid: string[];
           health_conditions: string[];
+          time_constraints: Json | null;
+          diet_tags: string[];
           created_at: string;
           updated_at: string;
         };
@@ -31,6 +33,8 @@ export interface Database {
           allergies?: string[];
           avoid?: string[];
           health_conditions?: string[];
+          time_constraints?: Json | null;
+          diet_tags?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -46,6 +50,8 @@ export interface Database {
           allergies?: string[];
           avoid?: string[];
           health_conditions?: string[];
+          time_constraints?: Json | null;
+          diet_tags?: string[];
           created_at?: string;
           updated_at?: string;
         };
@@ -357,6 +363,338 @@ export interface Database {
           updated_at?: string;
         };
         Relationships: [];
+      };
+      ingredients: {
+        Row: {
+          id: string;
+          name: string;
+          name_aliases: string[];
+          category: string;
+          default_shelf_life_days: number | null;
+          is_staple: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          name_aliases?: string[];
+          category: string;
+          default_shelf_life_days?: number | null;
+          is_staple?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          name_aliases?: string[];
+          category?: string;
+          default_shelf_life_days?: number | null;
+          is_staple?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      dishes: {
+        Row: {
+          id: string;
+          name: string;
+          slot_tags: string[];
+          prep_minutes: number;
+          effort_score: number;
+          protein_g: number;
+          calories: number;
+          ingredients: Json;
+          method_steps: Json;
+          tags: string[];
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slot_tags?: string[];
+          prep_minutes: number;
+          effort_score: number;
+          protein_g: number;
+          calories: number;
+          ingredients?: Json;
+          method_steps?: Json;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slot_tags?: string[];
+          prep_minutes?: number;
+          effort_score?: number;
+          protein_g?: number;
+          calories?: number;
+          ingredients?: Json;
+          method_steps?: Json;
+          tags?: string[];
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      leftover_transformations: {
+        Row: {
+          id: string;
+          base_category: string;
+          dish_id: string;
+          extra_staples: string[];
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          base_category: string;
+          dish_id: string;
+          extra_staples?: string[];
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          base_category?: string;
+          dish_id?: string;
+          extra_staples?: string[];
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'leftover_transformations_dish_id_fkey';
+            columns: ['dish_id'];
+            isOneToOne: false;
+            referencedRelation: 'dishes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      pantry_items: {
+        Row: {
+          id: string;
+          user_id: string;
+          ingredient_id: string;
+          source: string;
+          purchased_at: string;
+          predicted_empty_at: string | null;
+          confidence: number;
+          last_confirmed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          ingredient_id: string;
+          source: string;
+          purchased_at?: string;
+          predicted_empty_at?: string | null;
+          confidence?: number;
+          last_confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          ingredient_id?: string;
+          source?: string;
+          purchased_at?: string;
+          predicted_empty_at?: string | null;
+          confidence?: number;
+          last_confirmed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'pantry_items_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'pantry_items_ingredient_id_fkey';
+            columns: ['ingredient_id'];
+            isOneToOne: false;
+            referencedRelation: 'ingredients';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      household: {
+        Row: {
+          user_id: string;
+          size_bucket: string;
+          cooking_context: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          size_bucket: string;
+          cooking_context?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          size_bucket?: string;
+          cooking_context?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'household_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      leftover_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          base_category: string;
+          dish_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          base_category: string;
+          dish_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          base_category?: string;
+          dish_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'leftover_events_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'leftover_events_dish_id_fkey';
+            columns: ['dish_id'];
+            isOneToOne: false;
+            referencedRelation: 'dishes';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      daily_plans: {
+        Row: {
+          id: string;
+          user_id: string;
+          date: string;
+          slots: Json;
+          workout: Json | null;
+          condition_flags: string[];
+          generated_at: string;
+          plan_version: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          date: string;
+          slots: Json;
+          workout?: Json | null;
+          condition_flags?: string[];
+          generated_at?: string;
+          plan_version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          date?: string;
+          slots?: Json;
+          workout?: Json | null;
+          condition_flags?: string[];
+          generated_at?: string;
+          plan_version?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'daily_plans_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      meal_logs: {
+        Row: {
+          id: string;
+          user_id: string;
+          plan_date: string;
+          slot: string;
+          status: string;
+          swap_category: string | null;
+          custom_text: string | null;
+          logged_at: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          plan_date: string;
+          slot: string;
+          status: string;
+          swap_category?: string | null;
+          custom_text?: string | null;
+          logged_at?: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          plan_date?: string;
+          slot?: string;
+          status?: string;
+          swap_category?: string | null;
+          custom_text?: string | null;
+          logged_at?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'meal_logs_user_id_fkey';
+            columns: ['user_id'];
+            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
