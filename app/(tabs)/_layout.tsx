@@ -51,13 +51,17 @@ export default function TabsLayout() {
 function PravahTabBar({ state, navigation, descriptors }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
 
+  // Non-tab screens (kitchen, setup flow, recipe…) live in this group
+  // so the route guard keeps them reachable — only real tabs render here.
+  const tabRoutes = state.routes.filter((route) => TABS.some((tab) => tab.name === route.name));
+
   return (
     <View
       style={[styles.container, { paddingBottom: Math.max(insets.bottom, 8) + 8 }, shadows.nav]}
     >
-      {state.routes.map((route, index) => {
-        const focused = state.index === index;
-        const tab = TABS[index];
+      {tabRoutes.map((route) => {
+        const focused = state.index === state.routes.indexOf(route);
+        const tab = TABS.find((t) => t.name === route.name);
         const tabBarIcon = descriptors[route.key]?.options.tabBarIcon;
         const icon = tabBarIcon
           ? tabBarIcon({
