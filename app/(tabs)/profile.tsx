@@ -11,9 +11,8 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProgressRing } from '@/components/ProgressRing';
-import { useAuthStore } from '@/features/auth/store/authStore';
+import { useAuth } from '@/features/auth';
 import { clearToStaples, seedDemoPantry } from '@/lib/demo';
-import { supabase } from '@/lib/supabase';
 import { useAppStore } from '@/stores/appStore';
 import { colors, fonts, radii, shadows, spacing, typography } from '@/lib/theme';
 
@@ -38,13 +37,12 @@ const MUSCLES = [
 export default function DataScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAppStore();
-  const clearAuth = useAuthStore((s) => s.clearAuth);
+  const { signOut } = useAuth();
   const [demoLoading, setDemoLoading] = useState(false);
 
-  const handleReplayOnboarding = useCallback(async () => {
-    clearAuth();
-    await supabase.auth.signOut();
-  }, [clearAuth]);
+  const handleSignOut = useCallback(async () => {
+    await signOut();
+  }, [signOut]);
 
   const handleVersionLongPress = useCallback(() => {
     Alert.alert('demo tools', 'switch pantry state for demo purposes', [
@@ -234,15 +232,15 @@ export default function DataScreen() {
           </Pressable>
         </View>
 
-        {/* Return to onboarding */}
+        {/* Sign out */}
         <Pressable
           style={st.replayBtn}
           onPress={() => {
-            void handleReplayOnboarding();
+            void handleSignOut();
           }}
         >
           <MaterialIcons name="refresh" size={14} color={colors.text.muted} />
-          <Text style={st.replayBtnTxt}>Return to onboarding</Text>
+          <Text style={st.replayBtnTxt}>Sign out</Text>
         </Pressable>
 
         {/* App version — long-press opens demo tools */}

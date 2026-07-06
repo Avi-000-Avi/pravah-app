@@ -1,84 +1,73 @@
+import { router } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { OBShell } from '@/components/onboarding/OBShell';
-import { useAuthStore } from '@/features/auth/store/authStore';
-import { useOBStore } from '@/features/onboarding/store';
-import { ob } from '@/features/onboarding/theme';
-
-const GOAL_LABELS: Record<string, string> = {
-  build_muscle: 'Build muscle',
-  lose_fat: 'Lose fat',
-  improve_fitness: 'Improve fitness',
-  feel_better: 'Feel better',
-};
-
-const LOCATION_LABELS: Record<string, string> = {
-  gym: 'Gym',
-  home: 'Home',
-  outdoors: 'Outdoors',
-  mix: 'Mix',
-};
+import { DIET_LABELS, GOAL_LABELS, OnboardingShell, useOnboarding } from '@/features/onboarding';
+import { fonts, onboarding } from '@/lib/theme';
 
 const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-/** getDay() returns 0=Sun, so we map to Mon-based index */
-const todayIndex = (new Date().getDay() + 6) % 7;
+const TODAY_INDEX = (new Date().getDay() + 6) % 7;
 
 const QUICKSTART = [
-  { emoji: '🥗', label: 'Log breakfast' },
-  { emoji: '🏋️', label: 'See your plan' },
-  { emoji: '🤝', label: 'Find your crew' },
+  { emoji: '🥗', label: 'See your meals' },
+  { emoji: '🏋️', label: 'Open today' },
+  { emoji: '🛒', label: 'Check grocery' },
 ];
 
-export default function Step6Welcome() {
-  const setOnboarded = useAuthStore((s) => s.setOnboarded);
-  const { goal, sessionsPerWeek, trainingLocation, dietaryTags, reset } = useOBStore();
+export default function Step6Launch() {
+  const { answers, submit, isSubmitting, submitError, clearError } = useOnboarding();
 
-  function enterPravah() {
-    reset(); // clear onboarding draft
-    setOnboarded(true); // persisted to MMKV → route guard redirects to /(tabs)
-  }
-
-  const planParts = [
-    goal ? GOAL_LABELS[goal] : null,
-    `${sessionsPerWeek} sessions / week`,
-    trainingLocation ? LOCATION_LABELS[trainingLocation] : null,
-    dietaryTags.length > 0 ? dietaryTags[0] : null,
-    '1,840 kcal',
-  ].filter(Boolean);
+  const summary = [
+    answers.dietType ? DIET_LABELS[answers.dietType] : null,
+    answers.goal ? GOAL_LABELS[answers.goal] : null,
+    answers.mealCount !== null ? `${answers.mealCount} meals / day` : null,
+    answers.prepTimeMaxMin !== null ? `Prep ≤ ${answers.prepTimeMaxMin} min` : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
   return (
-    <OBShell
+    <OnboardingShell
       step={6}
-      stepLabel="Your flow begins"
+      stepLabel="Step 06 / Launch"
       titleLine1="Day one."
-      titleLine2="Already done."
-      desc="You showed up. The hardest rep is always the first."
-      ctaLabel="Enter Pravah"
-      onCta={enterPravah}
+      titleLine2="Already lighter."
+      desc="We have enough signal to start making smaller daily decisions on your behalf."
+      navActionLabel="Back"
+      onNavAction={() => {
+        clearError();
+        router.back();
+      }}
+      ctaLabel={isSubmitting ? 'Saving your flow…' : 'Enter Pravah'}
+      ctaDisabled={isSubmitting}
+      onCta={() => {
+        void submit();
+      }}
     >
-      {/* Welcome hero */}
       <View style={styles.welcomeHero}>
         <View style={styles.welcomeBadge}>
           <Text style={styles.welcomeEmoji}>🌊</Text>
         </View>
         <View style={styles.welcomeText}>
           <Text style={styles.welcomeTitle}>First flow unlocked</Text>
-          <Text style={styles.welcomeSub}>Pravah member · day 1 streak</Text>
+          <Text style={styles.welcomeSub}>Zero-decision plan ready</Text>
         </View>
       </View>
 
-      {/* Plan summary */}
       <View style={styles.planSummary}>
         <Text style={styles.planSummaryLabel}>Your configuration</Text>
-        <Text style={styles.planSummaryText}>{planParts.join(' · ')}</Text>
+        <Text style={styles.planSummaryText}>{summary}</Text>
       </View>
 
-      {/* Week streak */}
       <View style={styles.streakCard}>
         <Text style={styles.streakLbl}>This week</Text>
         <View style={styles.streakDays}>
-          {WEEK_DAYS.map((day, i) => (
-            <View key={i} style={[styles.streakDay, i === todayIndex && styles.streakDayToday]}>
-              <Text style={[styles.streakDayText, i === todayIndex && styles.streakDayTextToday]}>
+          {WEEK_DAYS.map((day, index) => (
+            <View
+              key={day + index}
+              style={[styles.streakDay, index === TODAY_INDEX && styles.streakDayToday]}
+            >
+              <Text
+                style={[styles.streakDayText, index === TODAY_INDEX && styles.streakDayTextToday]}
+              >
                 {day}
               </Text>
             </View>
@@ -86,25 +75,26 @@ export default function Step6Welcome() {
         </View>
       </View>
 
-      {/* Quickstart actions */}
       <View style={styles.quickstartCard}>
         <Text style={styles.quickstartLbl}>Start here</Text>
         <View style={styles.quickstartActions}>
-          {QUICKSTART.map((q) => (
-            <Pressable key={q.label} style={styles.qsAction} onPress={enterPravah}>
-              <Text style={styles.qsEmoji}>{q.emoji}</Text>
-              <Text style={styles.qsLabel}>{q.label}</Text>
+          {QUICKSTART.map((item) => (
+            <Pressable key={item.label} style={styles.qsAction}>
+              <Text style={styles.qsEmoji}>{item.emoji}</Text>
+              <Text style={styles.qsLabel}>{item.label}</Text>
             </Pressable>
           ))}
         </View>
       </View>
-    </OBShell>
+
+      {submitError ? <Text style={styles.errorText}>{submitError}</Text> : null}
+    </OnboardingShell>
   );
 }
 
 const styles = StyleSheet.create({
   welcomeHero: {
-    backgroundColor: ob.roseDeep,
+    backgroundColor: onboarding.accentDeep,
     borderRadius: 18,
     padding: 22,
     flexDirection: 'row',
@@ -116,7 +106,7 @@ const styles = StyleSheet.create({
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: onboarding.heroChipBorder,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -124,56 +114,54 @@ const styles = StyleSheet.create({
   welcomeEmoji: { fontSize: 26 },
   welcomeText: { flex: 1 },
   welcomeTitle: {
-    fontFamily: ob.serif,
+    fontFamily: fonts.displayRegular,
     fontSize: 20,
-    color: '#ffffff',
+    color: onboarding.heroText,
     letterSpacing: -0.2,
     marginBottom: 3,
   },
   welcomeSub: {
-    fontFamily: ob.sans,
+    fontFamily: fonts.body,
     fontSize: 11,
-    color: 'rgba(255,255,255,0.55)',
+    color: onboarding.heroTextSoft,
   },
-
   planSummary: {
-    backgroundColor: ob.rosePale,
+    backgroundColor: onboarding.accentPale,
     borderWidth: 1,
-    borderColor: ob.roseSoft,
+    borderColor: onboarding.accentSoft,
     borderRadius: 14,
     padding: 14,
     marginBottom: 8,
   },
   planSummaryLabel: {
-    fontFamily: ob.sansMedium,
+    fontFamily: fonts.body,
     fontSize: 9,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: ob.rose,
+    color: onboarding.accent,
     marginBottom: 6,
   },
   planSummaryText: {
-    fontFamily: ob.serif,
+    fontFamily: fonts.displayRegular,
     fontSize: 16,
-    color: ob.roseDeep,
+    color: onboarding.accentDeep,
     lineHeight: 23,
   },
-
   streakCard: {
-    backgroundColor: ob.surface,
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     padding: 18,
     paddingHorizontal: 20,
     marginBottom: 8,
   },
   streakLbl: {
-    fontFamily: ob.sansMedium,
+    fontFamily: fonts.body,
     fontSize: 9,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: ob.ink3,
+    color: onboarding.textMuted,
     marginBottom: 12,
   },
   streakDays: {
@@ -184,63 +172,67 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 36,
     borderRadius: 10,
-    backgroundColor: ob.bg,
+    backgroundColor: onboarding.bg,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
   streakDayToday: {
     borderWidth: 1.5,
-    borderColor: ob.rose,
-    backgroundColor: ob.rosePale,
+    borderColor: onboarding.accent,
+    backgroundColor: onboarding.accentPale,
   },
   streakDayText: {
-    fontFamily: ob.sansMedium,
+    fontFamily: fonts.body,
     fontSize: 10,
-    color: ob.ink3,
+    color: onboarding.textMuted,
   },
   streakDayTextToday: {
-    color: ob.roseDeep,
+    color: onboarding.accentDeep,
   },
-
   quickstartCard: {
-    backgroundColor: ob.surface,
+    backgroundColor: onboarding.surface,
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: ob.border2,
+    borderColor: onboarding.borderSubtle,
     padding: 18,
     paddingHorizontal: 20,
     marginBottom: 8,
   },
   quickstartLbl: {
-    fontFamily: ob.sansMedium,
+    fontFamily: fonts.body,
     fontSize: 9,
     letterSpacing: 1.3,
     textTransform: 'uppercase',
-    color: ob.ink3,
+    color: onboarding.textMuted,
     marginBottom: 12,
   },
   quickstartActions: {
-    flexDirection: 'row',
-    gap: 8,
+    gap: 10,
   },
   qsAction: {
-    flex: 1,
-    backgroundColor: ob.rosePale,
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    backgroundColor: onboarding.accentPale,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   qsEmoji: {
-    fontSize: 20,
-    marginBottom: 6,
+    fontSize: 16,
   },
   qsLabel: {
-    fontFamily: ob.sansMedium,
-    fontSize: 10,
-    color: ob.ink2,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: onboarding.accentDeep,
+  },
+  errorText: {
+    marginTop: 14,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: onboarding.accentDeep,
     textAlign: 'center',
   },
 });

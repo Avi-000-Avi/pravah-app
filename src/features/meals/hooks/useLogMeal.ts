@@ -12,6 +12,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { track } from '@/lib/analytics';
 import { supabase } from '@/lib/supabase';
 import { captureError } from '@/lib/monitoring';
 import { MEALS_QUERY_KEY } from './useMeals';
@@ -32,7 +33,7 @@ async function logMeal({ mealId, slot, date }: LogMealInput): Promise<void> {
   } = await supabase.auth.getSession();
 
   if (!session) {
-    throw new Error('Cannot log meal: user is not authenticated');
+    throw new Error('Sign in again to log this meal.');
   }
 
   const { error } = await supabase.from('user_meal_plans').upsert(
@@ -51,16 +52,18 @@ async function logMeal({ mealId, slot, date }: LogMealInput): Promise<void> {
   );
 
   if (error) {
-    captureError(error);
+    captureError(error, { action: 'log_meal', slot });
     throw error;
   }
+
+  track('meal_logged', { slot });
 }
 
 /**
  * Mutation hook that upserts a logged meal row into public.user_meal_plans.
  *
- * The mutation is fire-and-forget from the UI's perspective — the phase machine
- * advances optimistically via local state (setMealLogged in appStore). Any DB
+ * The UI awaits `mutateAsync()` before advancing the local phase machine, so the
+ * screen only marks a meal as logged after the database write succeeds. Any DB
  * error is captured to Sentry and exposed via `logMeal.error` for optional
  * display.
  *

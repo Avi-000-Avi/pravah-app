@@ -86,6 +86,32 @@ export const colors = {
   },
 } as const;
 
+export const onboarding = {
+  bg: '#f5f0ec',
+  surface: colors.white,
+  accent: '#c17a7a',
+  accentDeep: '#8b4a4a',
+  accentSoft: '#f2e4e4',
+  accentPale: '#faf4f4',
+  textPrimary: '#1e1a18',
+  textSecondary: '#5a4f4a',
+  textMuted: '#a09088',
+  heroBg: '#3d1f1f',
+  heroOverlay: colors.rose,
+  heroOutline: 'rgba(255,255,255,0.06)',
+  heroChip: 'rgba(255,255,255,0.12)',
+  heroChipBorder: 'rgba(255,255,255,0.15)',
+  heroText: colors.white,
+  heroTextMuted: 'rgba(255,255,255,0.6)',
+  heroTextSoft: 'rgba(255,255,255,0.55)',
+  heroTextStrong: 'rgba(255,255,255,0.9)',
+  border: 'rgba(30,26,24,0.10)',
+  borderSubtle: 'rgba(30,26,24,0.06)',
+  shadow: 'rgba(0,0,0,0.15)',
+  macroCarbs: '#c4a882',
+  macroFat: '#a8b8c4',
+} as const;
+
 /** 8px base grid — matches Stitch spacing spec */
 export const spacing = {
   xs: 4,
@@ -202,5 +228,5 @@ export const shadows = {
   },
 } as const;
 
-const theme = { colors, spacing, radii, fonts, typography, shadows };
+const theme = { colors, onboarding, spacing, radii, fonts, typography, shadows };
 export default theme;

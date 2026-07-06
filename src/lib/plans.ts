@@ -3,6 +3,7 @@
  * that keeps today's plan renderable offline.
  */
 import type { ConditionFlag, DailyPlan, PlanSlot } from '@/types/domain';
+import type { Database } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { getBackendSession } from './data/backend';
 import { newLocalId, readCollection, writeCollection } from './data/localStore';
@@ -40,7 +41,8 @@ export async function listRecentPlans(beforeOrOn: string, days: number): Promise
       .lte('date', beforeOrOn)
       .order('date', { ascending: false });
     if (error) throw error;
-    return (data ?? []) as DailyPlan[];
+    // slots/workout are jsonb — the PlanSlot[] contract lives in domain.ts.
+    return (data ?? []) as unknown as DailyPlan[];
   }
   return readCollection<DailyPlan>(KEY)
     .filter((plan) => plan.date >= sinceKey && plan.date <= beforeOrOn)
@@ -64,11 +66,14 @@ export async function savePlan(generated: GeneratedDayPlan): Promise<DailyPlan> 
     const { id: _localId, ...row } = plan;
     const { data, error } = await supabase
       .from('daily_plans')
-      .upsert(row, { onConflict: 'user_id,date' })
+      // slots/workout serialise to jsonb; cast at the boundary only.
+      .upsert(row as unknown as Database['public']['Tables']['daily_plans']['Insert'], {
+        onConflict: 'user_id,date',
+      })
       .select()
       .single();
     if (error) throw error;
-    return data as DailyPlan;
+    return data as unknown as DailyPlan;
   }
 
   const existing = await getPlan(generated.date);
@@ -97,12 +102,12 @@ export async function updatePlan(
   if (session.mode === 'remote') {
     const { data, error } = await supabase
       .from('daily_plans')
-      .update(changes)
+      .update(changes as unknown as Database['public']['Tables']['daily_plans']['Update'])
       .eq('date', date)
       .select()
       .maybeSingle();
     if (error) throw error;
-    return (data as DailyPlan | null) ?? null;
+    return (data as unknown as DailyPlan | null) ?? null;
   }
 
   const rows = readCollection<DailyPlan>(KEY);

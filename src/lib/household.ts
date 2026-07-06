@@ -5,6 +5,7 @@
  * meal_preferences. Same remote/local seam as the pantry repo.
  */
 import type { Household, HouseholdSizeBucket, TimeConstraints } from '@/types/domain';
+import type { Json } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import { getBackendSession } from './data/backend';
@@ -58,7 +59,8 @@ export async function setTimeConstraints(constraints: TimeConstraints): Promise<
   if (session.mode === 'remote') {
     const { error } = await supabase
       .from('meal_preferences')
-      .update({ time_constraints: constraints })
+      // TimeConstraints serialises to jsonb; cast at the boundary only.
+      .update({ time_constraints: constraints as unknown as Json })
       .eq('user_id', session.userId);
     if (error) throw error;
     return;

@@ -95,37 +95,40 @@ export default function MealsScreen() {
   const [phase, setPhase] = useState<Phase>('ready');
   const [fillPct, setFillPct] = useState(0);
   const [swapIdx, setSwapIdx] = useState<number | null>(null);
+  const [logErrorMessage, setLogErrorMessage] = useState<string | null>(null);
   const allDone = MEALS.length > 0 && activeMeal >= MEALS.length;
+  const plannedMeals = MEALS.length || today.meals.total;
+  const loggedMeals = Math.min(activeMeal, plannedMeals);
 
-  const handleEat = () => {
+  const handleEat = async () => {
     const meal = MEALS[activeMeal];
-    if (!meal) return;
+    if (!meal || logMeal.isPending) return;
 
-    // Fire the DB write immediately — the animation runs in parallel.
-    // Errors are captured to Sentry inside the mutationFn; they don't
-    // block the local phase machine so UX stays smooth even on poor networks.
-    const today_date = new Date().toISOString().split('T')[0] ?? '';
-    logMeal.mutate({ mealId: meal.mealId, slot: meal.slot, date: today_date });
-
+    setLogErrorMessage(null);
     setPhase('logging');
-    setFillPct(0);
-    let p = 0;
-    const iv = setInterval(() => {
-      p += 5;
-      setFillPct(p);
-      if (p >= 100) {
-        clearInterval(iv);
+    setFillPct(35);
+
+    try {
+      const todayDate = new Date().toISOString().split('T')[0] ?? '';
+      await logMeal.mutateAsync({ mealId: meal.mealId, slot: meal.slot, date: todayDate });
+
+      setFillPct(100);
+      setTimeout(() => {
+        setPhase('logged');
+        setMealLogged();
         setTimeout(() => {
-          setPhase('logged');
-          setMealLogged();
-          setTimeout(() => {
-            setActiveMeal((m) => m + 1);
-            setPhase('ready');
-            setFillPct(0);
-          }, 1200);
-        }, 200);
-      }
-    }, 18);
+          setActiveMeal((value) => value + 1);
+          setPhase('ready');
+          setFillPct(0);
+        }, 1200);
+      }, 180);
+    } catch (nextError) {
+      setPhase('ready');
+      setFillPct(0);
+      setLogErrorMessage(
+        nextError instanceof Error ? nextError.message : 'Could not log this meal.',
+      );
+    }
   };
 
   const doneMeals = MEALS.slice(0, activeMeal);
@@ -154,7 +157,7 @@ export default function MealsScreen() {
           <Text style={st.titleI}>Your meals today</Text>
         </Text>
         <Text style={st.subtitle}>
-          {today.meals.done} of {today.meals.total} logged · {1440 - totalCal} kcal remaining
+          {loggedMeals} of {plannedMeals} logged · {1440 - totalCal} kcal remaining
         </Text>
 
         {/* Macro summary */}
@@ -314,6 +317,9 @@ export default function MealsScreen() {
                       <Text style={st.loggedTxt}>Logged! +8% progress</Text>
                     </View>
                   )}
+                  {logErrorMessage && phase === 'ready' && (
+                    <Text style={st.logErrorText}>{logErrorMessage}</Text>
+                  )}
                   {phase === 'swapping' && (
                     <View style={st.swapList}>
                       <Text style={st.swapLbl}>Smart swaps</Text>
@@ -472,6 +478,12 @@ const st = StyleSheet.create({
   loggedRow: { alignItems: 'center', paddingVertical: 8 },
   loggedEmoji: { fontSize: 32 },
   loggedTxt: { fontFamily: fonts.bodySemi, fontSize: 13, color: colors.mint },
+  logErrorText: {
+    marginTop: 4,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: colors.status.errorText,
+  },
   swapList: { gap: 8 },
   swapLbl: {
     fontFamily: fonts.label,
